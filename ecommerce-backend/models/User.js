@@ -8,12 +8,23 @@ const userSchema = new mongoose.Schema({
   role: { type: String, default: 'user' }
 }, { timestamps: true });
 
-// ፓስወርድ ከመቀመጡ በፊት Hash (መደበቅ) ለማድረግ
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
+// 1. የ 'next' ስህተትን ለመፍታት በቀጥታ async function ተጠቀም
+userSchema.pre('save', async function () {
+  // ፓስወርዱ ካልተቀየረ ስራውን አቁም
+  if (!this.isModified('password')) return;
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    // እዚህ ጋር next() መጥራት አያስፈልግም፣ async function ራሱ ስራውን እንደጨረሰ ያውቃል
+  } catch (error) {
+    throw new Error(error);
+  }
 });
+
+// 2. ለሎጊን ጊዜ ፓስወርድ ለማነጻጸር የሚረዳ ተግባር (Helper Method)
+userSchema.methods.comparePassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
 export default mongoose.model('User', userSchema);

@@ -1,6 +1,6 @@
-import axios from 'axios';
 import { useState } from 'react';
 import { useSelector } from 'react-redux';
+import API from '../services/api';
 
 const AdminAddProduct = () => {
   const [formData, setFormData] = useState({
@@ -12,12 +12,11 @@ const AdminAddProduct = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // ምስል ስላለ የግዴታ FormData መጠቀም አለብን
     const data = new FormData();
     data.append('name', formData.name);
     data.append('price', formData.price);
     data.append('description', formData.description);
-    data.append('category', formData.category);
+    data.append('category', formData.category); // 👈 ይህ መስመር መኖሩን አረጋግጥ!
     data.append('countInStock', formData.countInStock);
     data.append('image', image); // የፋይል ዳታው
 
@@ -28,7 +27,7 @@ const AdminAddProduct = () => {
           Authorization: `Bearer ${user.token}`,
         },
       };
-      await axios.post('http://localhost:5000/api/products', data, config);
+      await API.post('http://localhost:5000/api/products', data, config);
       alert('ምርቱ በትክክል ተመዝግቧል!');
     } catch (err) {
       alert('ስህተት ተፈጥሯል: ' + err.response.data.message);
@@ -42,9 +41,16 @@ const AdminAddProduct = () => {
         <input type="text" placeholder="Product Name" className="w-full border p-2" 
           onChange={(e) => setFormData({...formData, name: e.target.value})} required />
         
-        <input type="number" placeholder="Price" className="w-full border p-2" 
-          onChange={(e) => setFormData({...formData, price: e.target.value})} required />
-        
+        <input 
+  type="number" 
+  placeholder="Stock Quantity (ምሳሌ፡ 10)" 
+  className="w-full border p-2 rounded" 
+  value={formData.countInStock}
+  // ⚠️ እዚህ ጋር 'countInStock' የሚለው ስም መሳሳት የለበትም
+  onChange={(e) => setFormData({...formData, countInStock: e.target.value})} 
+  required 
+/>
+        <input type="text" placeholder="Category (ምሳሌ፡ Electronics, Clothing)"className="w-full border p-2 rounded" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} required/>
         <textarea placeholder="Description" className="w-full border p-2" 
           onChange={(e) => setFormData({...formData, description: e.target.value})} required />
 
