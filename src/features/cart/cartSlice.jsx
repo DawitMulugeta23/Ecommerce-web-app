@@ -1,15 +1,19 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+const cartFromStorage = localStorage.getItem('cartItems')
+      ? JSON.parse(localStorage.getItem('cartItems'))
+      :[];
+      const initialTotal = cartFromStorage.reduce((acc, item) => acc + item.price * item.quantity, 0)
+     
 const initialState = {
-  items: [],
-  totalAmount: 0,
+  items: cartFromStorage,
+  totalAmount: initialTotal,
 };
 
 const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
-    // features/cart/cartSlice.js ውስጥ ያለውን addToCart reducer እንዲህ አሻሽለው
 
     addToCart: (state, action) => {
       const newItem = action.payload;
@@ -31,15 +35,23 @@ const cartSlice = createSlice({
           alert("ከክምችት በላይ ማዘዝ አይቻልም!");
         }
       }
+      state.totalAmount = state.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+      
+      localStorage.setItem('cartItems', JSON.stringify(state.items));
     },
     removeFromCart: (state, action) => {
       const id = action.payload;
       const existingItem = state.items.find((item) => (item._id || item.id) === id);
-      
+      localStorage.setItem('cartItems', JSON.stringify(state.items));
       if (existingItem) {
         state.totalAmount -= existingItem.price * existingItem.quantity;
         state.items = state.items.filter((item) => (item._id || item.id) !== id);
       }
+    },
+    clearCart: (state) => {
+      state.items = [];
+      state.totalAmount = 0;
+      localStorage.removeItem('cartItems');
     },
     // መጠኑን ለመጨመር ወይም ለመቀነስ (Optional)
     updateQuantity: (state, action) => {
@@ -51,10 +63,12 @@ const cartSlice = createSlice({
         if (item.quantity <= 0) {
           state.items = state.items.filter((i) => (i._id || i.id) !== id);
         }
+        state.totalAmount = state.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+        localStorage.setItem('cartItems', JSON.stringify(state.items));
       }
     }
   },
 });
 
-export const { addToCart, removeFromCart, updateQuantity } = cartSlice.actions;
+export const { addToCart, removeFromCart, updateQuantity, clearCart } = cartSlice.actions;
 export default cartSlice.reducer;

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import Navbar from '../components/Navbar';
+
 import ProductCard from '../components/ProductCard';
 import { fetchProducts } from '../features/products/productSlice';
 
@@ -13,7 +13,6 @@ const Home = () => {
   ? items 
   : items.filter(p => p.countInStock > 0);
 // መጠናቸው ከ 0 በላይ የሆኑትን ብቻ ለይቶ ለማውጣት
-const visibleProducts = items.filter(product => product.countInStock > 0);
 
   useEffect(() => {
     dispatch(fetchProducts());
@@ -21,7 +20,7 @@ const visibleProducts = items.filter(product => product.countInStock > 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Latest Products</h1>
         {status === 'loading' && <p>Loading products...</p>}
