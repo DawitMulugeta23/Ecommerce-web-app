@@ -9,18 +9,28 @@ const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
+    // features/cart/cartSlice.js ውስጥ ያለውን addToCart reducer እንዲህ አሻሽለው
+
     addToCart: (state, action) => {
       const newItem = action.payload;
-      // MongoDB _id ወይም id መሆኑን ቼክ ያደርጋል
       const itemId = newItem._id || newItem.id;
       const existingItem = state.items.find((item) => (item._id || item.id) === itemId);
 
       if (!existingItem) {
-        state.items.push({ ...newItem, quantity: 1 });
+        // ገና ከሆነ 1 እንጨምራለን (ክምችት ካለ ብቻ)
+        if (newItem.countInStock > 0) {
+          state.items.push({ ...newItem, quantity: 1 });
+          state.totalAmount += newItem.price;
+        }
       } else {
-        existingItem.quantity++;
+        // ቀድሞ ካለ፣ መጠኑ ከክምችቱ (countInStock) ያነሰ መሆኑን እናረጋግጣለን
+        if (existingItem.quantity < newItem.countInStock) {
+          existingItem.quantity++;
+          state.totalAmount += newItem.price;
+        } else {
+          alert("ከክምችት በላይ ማዘዝ አይቻልም!");
+        }
       }
-      state.totalAmount += newItem.price;
     },
     removeFromCart: (state, action) => {
       const id = action.payload;

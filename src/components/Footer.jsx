@@ -15,12 +15,12 @@ const Footer = () => {
         </div>
         <div>
           <h3 className="font-bold mb-4">ያግኙን</h3>
-          <p className="text-gray-400 text-sm">ኢሜይል: support@mystore.com</p>
-          <p className="text-gray-400 text-sm">ስልክ: +251 900 000 000</p>
+          <p className="text-gray-400 text-sm">ኢሜይል: dawitmulugetas27@gmail.com</p>
+          <p className="text-gray-400 text-sm">ስልክ: +251 968 871 794</p>
         </div>
       </div>
       <div className="border-t border-gray-800 mt-10 pt-6 text-center text-gray-500 text-xs">
-        &copy; {new Date().getFullYear()} MyStore. All rights reserved.
+        &copy; {new Date().getFullYear()} MyStore. All rights reserved to Dawit Mulugeta.
       </div>
     </footer>
   );
