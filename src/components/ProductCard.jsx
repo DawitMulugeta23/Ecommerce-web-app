@@ -22,7 +22,7 @@ const ProductCard = ({ product }) => {
           {isOutOfStock ? 'ተሽጦ አልቋል' : `ቀሪ በክምችት: ${product.countInStock}`}
         </p>
 
-        <div className="flex justify-between items-center mt-4">
+        <div className="flex justify-between items-center mt-3">
           <span className="text-xl font-bold text-blue-600">${product.price}</span>
           <button 
             onClick={() => dispatch(addToCart(product))}

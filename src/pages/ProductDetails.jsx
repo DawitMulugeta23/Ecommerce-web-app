@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import API from '../services/api';
 import { useDispatch } from 'react-redux';
 import { addToCart } from '../features/cart/cartSlice';
-import Navbar from '../components/Navbar';
+// import Navbar from '../components/Navbar';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -30,7 +30,6 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <Navbar />
       <div className="container mx-auto px-4 py-12 flex flex-col md:flex-row gap-12">
         {/* የምስል ክፍል */}
         <div className="md:w-1/2">
