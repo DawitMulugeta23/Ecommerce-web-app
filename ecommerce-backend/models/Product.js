@@ -7,7 +7,8 @@ const productSchema = new mongoose.Schema({
   },
   image: { type: String, required: true }, // የምስሉ ሊንክ
   category: { type: String, required: true },
-  countInStock: { type: Number, required: true, default: 0 },
+  countInStock: { type: Number, required: true, default:5 // 👈 እዚህም መቀየር ትችላለህ
+  },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true } // የትኛው አድሚን እንደጨመረው ለማወቅ
 }, { timestamps: true });
 

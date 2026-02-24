@@ -4,8 +4,13 @@ import API from '../services/api';
 
 const AdminAddProduct = () => {
   const [formData, setFormData] = useState({
-    name: '', price: '', description: '', category: '', countInStock: ''
+    name: '', 
+    price: '', 
+    description: '', 
+    category: '', 
+    countInStock: 5 // 👈 እዚህ ጋር ዲፎልት ዋጋውን 5 አድርገው
   });
+
   const [image, setImage] = useState(null);
   const { user } = useSelector((state) => state.auth);
 
@@ -14,11 +19,15 @@ const AdminAddProduct = () => {
     
     const data = new FormData();
     data.append('name', formData.name);
-    data.append('price', formData.price);
+    data.append('price', Number(formData.price));
     data.append('description', formData.description);
-    data.append('category', formData.category); // 👈 ይህ መስመር መኖሩን አረጋግጥ!
-    data.append('countInStock', formData.countInStock);
-    data.append('image', image); // የፋይል ዳታው
+    data.append('category', formData.category);
+    
+    // ⚠️ ቁጥር መሆኑን እና ባዶ ከሆነ 5 እንዲሆን እናረጋግጣለን
+    const stockValue = formData.countInStock === '' ? 5 : Number(formData.countInStock);
+    data.append('countInStock', stockValue);
+    
+    data.append('image', image);
 
     try {
       const config = {
@@ -42,20 +51,33 @@ const AdminAddProduct = () => {
           onChange={(e) => setFormData({...formData, name: e.target.value})} required />
         
         <input 
-  type="number" 
-  placeholder="Stock Quantity (ምሳሌ፡ 10)" 
-  className="w-full border p-2 rounded" 
-  value={formData.countInStock}
-  // ⚠️ እዚህ ጋር 'countInStock' የሚለው ስም መሳሳት የለበትም
-  onChange={(e) => setFormData({...formData, countInStock: e.target.value})} 
-  required 
-/>
+          type="number" 
+          step="0.01" // ነጥብ ያላቸውን ቁጥሮች ለመቀበል
+          placeholder="Price (ምሳሌ፡ 12.50)" 
+          className="w-full border p-2 rounded" 
+          value={formData.price}
+          // ⚠️ እዚህ ጋር 'price' የሚለው ስም ከ formData ጋር መመሳሰል አለበት
+          onChange={(e) => setFormData({...formData, price: e.target.value})} 
+          required 
+        />
         <input type="text" placeholder="Category (ምሳሌ፡ Electronics, Clothing)"className="w-full border p-2 rounded" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} required/>
         <textarea placeholder="Description" className="w-full border p-2" 
           onChange={(e) => setFormData({...formData, description: e.target.value})} required />
 
         <input type="file" className="w-full" accept="image/*"
           onChange={(e) => setImage(e.target.files[0])} required />
+
+        <div className="space-y-1">
+          <label className="text-sm font-semibold text-gray-600">በክምችት ያለው መጠን (Stock)</label>
+          <input 
+            type="number" 
+            placeholder="Quantity" 
+            className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" 
+            value={formData.countInStock}
+            onChange={(e) => setFormData({...formData, countInStock: e.target.value})} 
+            required 
+          />
+        </div>
 
         <button type="submit" className="w-full bg-green-600 text-white py-2 rounded">
           ምርት መዝግብ
