@@ -23,43 +23,42 @@ const ProductCard = ({ product }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
-  // 🛒 ወደ ቅርጫት ጨምር
   const handleAddToCart = (e) => {
     e.stopPropagation();
     dispatch(addToCart(product));
     toast.success(`${product.name} ታክሏል!`);
   };
 
-  // 💳 አሁኑኑ ግዛ
   const handleBuyNow = (e) => {
     e.stopPropagation();
     dispatch(addToCart(product));
     navigate("/checkout");
   };
 
-  // 🗑️ ምርት ሰርዝ (Delete Functionality)
   const handleDelete = async (e) => {
-    e.stopPropagation(); // ምስሉ እንዳይከፈት
-
-    if (!user || user.role !== "admin") {
-      return toast.error("ይህንን ለማድረግ ፈቃድ የለዎትም!");
-    }
+    e.stopPropagation();
 
     if (window.confirm(`እርግጠኛ ነዎት "${product.name}" መሰረዝ ይፈልጋሉ?`)) {
       try {
         const config = {
-          headers: { Authorization: `Bearer ${user.token}` },
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+            "Content-Type": "application/json",
+          },
         };
 
+        // 2. የ API ጥሪ (Path በትክክል መሆኑን አረጋግጥ)
         await API.delete(`/products/${product._id}`, config);
 
-        toast.success("ምርቱ በትክክል ተሰርዟል!");
+        toast.success("ምርቱ ተሰርዟል!");
 
-        // 🔥 ዋናው ነጥብ፡ ገጹን ወዲያውኑ ለማደስ
         dispatch(fetchProducts());
       } catch (err) {
-        console.error("Delete Error:", err);
-        toast.error(err.response?.data?.message || "መሰረዝ አልተቻለም");
+        console.error("Delete Error:", err.response?.data);
+        toast.error(
+          err.response?.data?.message ||
+            "መሰረዝ አልተቻለም - Backend ፍቃድ ከልክሎ ሊሆን ይችላል",
+        );
       }
     }
   };

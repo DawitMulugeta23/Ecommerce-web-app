@@ -23,7 +23,7 @@ const AdminEditProduct = () => {
 
   const [originalPrice, setOriginalPrice] = useState(0);
 
-  // 1. የምርቱን ዳታ መጫን
+  // 1. የምርቱን ነባር ዳታ ከመረጃ ቋት መጫን
   useEffect(() => {
     const getProduct = async () => {
       try {
@@ -46,33 +46,45 @@ const AdminEditProduct = () => {
     getProduct();
   }, [id, navigate]);
 
-  // 2. ለውጦችን መላክ (Submit)
+  // 2. የተስተካከለው ለውጦችን መላኪያ ተግባር (Functional Submit)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!user || user.role !== "admin") {
-      return toast.error("ፈቃድ የለዎትም!");
+      return toast.error("ይህንን ለማድረግ የአድሚን ፈቃድ ያስፈልጋል!");
     }
 
     try {
-      // የዋጋ ቅናሽ ካለ አሮጌውን ዋጋ መመዝገብ
-      const finalPrice = Number(formData.price);
-      const updatePayload = {
-        ...formData,
-        price: finalPrice,
-        oldPrice: finalPrice < originalPrice ? originalPrice : null,
-      };
-
+      // 🛠️ የጥሪ ቅንጅት (Headers)
       const config = {
-        headers: { Authorization: `Bearer ${user.token}` },
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          "Content-Type": "application/json",
+        },
       };
 
-      await API.put(`/products/${id}`, updatePayload, config);
+      // 📦 አዲሱን ዳታ ማዘጋጀት (Payload)
+      const updatedData = {
+        name: formData.name,
+        price: Number(formData.price),
+        description: formData.description,
+        category: formData.category,
+        image: formData.image,
+        countInStock: Number(formData.countInStock),
+        // ዋጋው ከቀነሰ ብቻ የቀድሞውን ዋጋ (oldPrice) መመዝገብ
+        oldPrice: Number(formData.price) < originalPrice ? originalPrice : null,
+      };
 
-      toast.success("ምርቱ በትክክል ተስተካክሏል!");
-      dispatch(fetchProducts()); // Redux ዳታ እንዲታደስ
-      navigate("/");
+      // 🚀 የ API ጥሪ
+      const { data } = await API.put(`/products/${id}`, updatedData, config);
+
+      if (data) {
+        toast.success("ምርቱ በትክክል ተሻሽሏል!");
+        dispatch(fetchProducts()); // ገጹ በራሱ እንዲታደስ Redux መጥራት
+        navigate("/"); // ወደ ዋናው ገጽ መመለስ
+      }
     } catch (err) {
+      console.error("Update Error:", err.response?.data);
       toast.error(err.response?.data?.message || "ማስተካከል አልተቻለም");
     }
   };
@@ -86,6 +98,7 @@ const AdminEditProduct = () => {
         ምርት ያስተካክሉ
       </h2>
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* የምርት ስም */}
         <div>
           <label className="block font-bold mb-2 text-gray-600">የምርት ስም</label>
           <input
@@ -98,6 +111,7 @@ const AdminEditProduct = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
+          {/* ዋጋ */}
           <div>
             <label className="block font-bold mb-2 text-gray-600">
               ዋጋ (ETB)
@@ -112,6 +126,7 @@ const AdminEditProduct = () => {
               required
             />
           </div>
+          {/* ብዛት */}
           <div>
             <label className="block font-bold mb-2 text-gray-600">
               ብዛት (Stock)
@@ -128,6 +143,7 @@ const AdminEditProduct = () => {
           </div>
         </div>
 
+        {/* ካቴጎሪ */}
         <div>
           <label className="block font-bold mb-2 text-gray-600">ካቴጎሪ</label>
           <select
@@ -147,6 +163,7 @@ const AdminEditProduct = () => {
           </select>
         </div>
 
+        {/* ምስል URL */}
         <div>
           <label className="block font-bold mb-2 text-gray-600">
             ምስል (URL)
@@ -162,6 +179,7 @@ const AdminEditProduct = () => {
           />
         </div>
 
+        {/* መግለጫ */}
         <div>
           <label className="block font-bold mb-2 text-gray-600">
             ዝርዝር መግለጫ
@@ -175,6 +193,7 @@ const AdminEditProduct = () => {
           ></textarea>
         </div>
 
+        {/* ቁልፎች */}
         <div className="flex gap-4 pt-4">
           <button
             type="button"
