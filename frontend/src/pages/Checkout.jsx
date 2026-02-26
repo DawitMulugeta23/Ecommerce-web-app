@@ -1,38 +1,41 @@
-import { useSelector } from 'react-redux';
-import API from '../services/api';
+import { useState } from "react";
+import { useSelector } from "react-redux";
+import API from "../services/api";
 
 const Checkout = () => {
   const { items, totalAmount } = useSelector((state) => state.cart);
   const { user } = useSelector((state) => state.auth);
+  const { loading, setLoading } = useState(false);
 
   const handlePayment = async () => {
-    // ቼክ፡ ተጠቃሚው መግባቱን አረጋግጥ
-    if (!user) {
-      alert("እባክዎ መጀመሪያ ይግቡ");
-      return;
-    }
+    setLoading(true);
+    const tx_ref = `tx-${Date.now()}`; // ለየክፍያው የተለየ መታወቂያ
 
     try {
-      console.log("ክፍያ እየተጀመረ ነው...");
-      
-      const { data } = await API.post('/payments/initialize', {
+      const paymentData = {
         amount: totalAmount,
         email: user.email,
-        firstName: user.name.split(' ')[0],
-        lastName: user.name.split(' ')[1] || 'User',
-      });
+        firstName: user.name.split(" ")[0],
+        lastName: user.name.split(" ")[1] || "Customer",
+        tx_ref,
+      };
 
-      console.log("ከChapa የመጣ ምላሽ:", data);
+      const { data } = await API.post(
+        "/payments/chapa/initialize",
+        paymentData,
+      );
 
-      if (data.status === 'success' && data.data.checkout_url) {
-        // 🚀 በቀጥታ ወደ Chapa ክፍያ ገጽ ይወስደሃል
+      if (data.data && data.data.checkout_url) {
+        // ተጠቃሚውን ወደ Chapa የክፍያ ገጽ መውሰጃ መስመር፡
         window.location.href = data.data.checkout_url;
       } else {
-        alert("የክፍያ ሊንክ መፍጠር አልተቻለም።");
+        alert("የክፍያ ሊንክ ማግኘት አልተቻለም!");
       }
     } catch (err) {
-      console.error("Payment Error:", err.response?.data || err.message);
-      alert("ክፍያ ማስጀመር አልተቻለም። ሰርቨርህ መከፈቱን አረጋግጥ።");
+      console.error("Payment failed", err);
+      alert(err.response?.data?.message || "ክፍያ መጀመር አልተቻለም");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,7 +46,9 @@ const Checkout = () => {
         <h3 className="font-bold mb-2">የሚገዙ ዕቃዎች ዝርዝር፡</h3>
         {items.map((item) => (
           <div key={item._id} className="flex justify-between border-b py-2">
-            <span>{item.name} (x{item.quantity})</span>
+            <span>
+              {item.name} (x{item.quantity})
+            </span>
             <span>{item.price * item.quantity} ETB</span>
           </div>
         ))}
@@ -54,8 +59,8 @@ const Checkout = () => {
           <span className="text-gray-600">ጠቅላላ ድምር:</span>
           <span className="font-black text-blue-600">{totalAmount} ETB</span>
         </div>
-        
-        <button 
+
+        <button
           onClick={handlePayment}
           className="w-full bg-[#ff9900] hover:bg-[#e68a00] text-white py-4 rounded-xl font-bold text-lg transition-transform active:scale-95 shadow-lg"
         >

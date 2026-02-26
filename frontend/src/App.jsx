@@ -14,6 +14,7 @@ import Navbar from './components/Navbar';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Success from './pages/Success';
+import AdminEditProduct from './pages/AdminEditProduct';
 function App() {
   return (
     <>
@@ -30,7 +31,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/cart" element={<Cart />} />
-        
+        <Route path="/admin/edit-product/:id" element={<AdminEditProduct/>}/>
         {/* አድሚን ካልሆነ መግባት አይችልም */}
         <Route path="/admin/add-product" element={
           <ProtectedRoute isAdmin={true}>

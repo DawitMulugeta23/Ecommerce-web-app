@@ -1,26 +1,21 @@
 import axios from "axios";
 
-export const initializePayment = async (req, res) => {
-  // ከፍሮንትኤንድ የሚመጡ መረጃዎች
-  const { amount, email, firstName, lastName } = req.body;
-
-  // ለእያንዳንዱ ክፍያ ልዩ መለያ ቁጥር (Transaction Reference)
-  const tx_ref = `tx-mystore-${Date.now()}`;
+// 1. ክፍያ ለመጀመር (Initialize)
+export const initializeChapaPayment = async (req, res) => {
+  const { amount, email, firstName, lastName, tx_ref } = req.body;
 
   try {
     const response = await axios.post(
       "https://api.chapa.co/v1/transaction/initialize",
       {
-        amount: amount,
+        amount,
         currency: "ETB",
-        email: email,
+        email,
         first_name: firstName,
         last_name: lastName,
-        tx_ref: tx_ref,
-        callback_url: `http://localhost:5000/api/payments/verify/${tx_ref}`,
-        return_url: "http://localhost:5173/success", // ክፍያው ሲያልቅ ተጠቃሚው የሚመለስበት ገጽ
-        "customization[title]": "My Store Payment",
-        "customization[description]": "Payment for your order",
+        tx_ref,
+        callback_url: "http://localhost:5000/api/payments/webhook",
+        return_url: `http://localhost:5173/order-success/${tx_ref}`,
       },
       {
         headers: {
@@ -30,59 +25,57 @@ export const initializePayment = async (req, res) => {
       },
     );
 
-    // Chapa የላከውን መረጃ (checkout_url-ን ጨምሮ) ለፍሮንትኤንድ መመለስ
-    res.json(response.data);
+    // Chapa የሚመልሰው ዳታ ውስጥ 'status': 'success' ከሆነ ብቻ ነው ወደ ክፍያ የምንሄደው
+    if (response.data.status === "success") {
+      res.json(response.data);
+    } else {
+      res.status(400).json({ message: "Chapa initialization failed" });
+    }
   } catch (error) {
-    console.error("Chapa API Error:", error.response?.data || error.message);
-    res.status(500).json({
-      success: false,
-      message: "ክፍያ ማስጀመር አልተቻለም",
-      error: error.response?.data || error.message,
-    });
+    console.error("Chapa Error:", error.response?.data || error.message);
+    res
+      .status(500)
+      .json({ message: error.response?.data?.message || error.message });
   }
 };
 
-// ክፍያውን ማረጋገጫ (Verify)
+// 2. ክፍያ መፈጸሙን ለማረጋገጥ (Verify)
 export const verifyPayment = async (req, res) => {
   const { tx_ref } = req.params;
   try {
     const response = await axios.get(
       `https://api.chapa.co/v1/transaction/verify/${tx_ref}`,
       {
-        headers: {
-          Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`,
-        },
+        headers: { Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}` },
       },
     );
     res.json(response.data);
   } catch (error) {
-    res.status(500).json({ message: "ማረጋገጥ አልተቻለም", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Verification failed", error: error.message });
   }
 };
 
-// Webhook ከ Chapa የሚመጣውን መረጃ ለመቀበል
+// 3. ለ Chapa Webhook
 export const chapaWebhook = async (req, res) => {
-  try {
-    const eventData = req.body;
-
-    console.log("Webhook received:", eventData);
-
-    // ክፍያው ስኬት መሆኑን አረጋግጥ
-    if (eventData.event === "charge.success") {
-      const { tx_ref, amount, customer } = eventData.data;
-
-      // እዚህ ጋር ትዕዛዙን ማዘመን፣ ኢሜይል መላክ ወዘተ ታደርጋለህ
-      console.log(`ክፍያ ተሳክቷል! ማመሳከሪያ: ${tx_ref}, ገንዘብ: ${amount}`);
-
-      // ለምሳሌ፡ ትዕዛዙን ከውሂብ ጎታ ላይ አዘምን
-      // await Order.findOneAndUpdate({ tx_ref }, { status: 'paid' });
-
-      // ኢሜይል ለደንበኛው ላክ (በኋላ ላይ እንጨምራለን)
-    }
-
-    res.status(200).json({ received: true });
-  } catch (error) {
-    console.error("Webhook error:", error);
-    res.status(500).json({ error: error.message });
-  }
+  // Chapa መረጃውን ሲልክ እዚህ ጋር ይቀበላል
+  res.status(200).send("Webhook received");
 };
+
+// 4. የክፍያ መንገዶችን ለመዘርዘር
+export const getPaymentMethods = async (req, res) => {
+  res.json({
+    methods: [
+      { id: "chapa", name: "Chapa", enabled: true },
+      { id: "telebirr", name: "Telebirr", enabled: false }, // ለጊዜው ፎልስ አድርገው
+      { id: "cbebirr", name: "CBE Birr", enabled: false },
+    ],
+  });
+};
+
+// እነዚህን ከታች ያሉትን ለጊዜው ባዶ ፈንክሽን አድርጋቸው (Route ላይ ስለተጠሩ Error እንዳይመጣ)
+export const initializeTelebirrPayment = (req, res) =>
+  res.status(501).json({ message: "Not implemented" });
+export const initializeCbeBirrPayment = (req, res) =>
+  res.status(501).json({ message: "Not implemented" });

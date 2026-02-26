@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchProducts } from '../features/products/productSlice';
 import API from '../services/api';
-
+import toast from 'react-hot-toast';
 const AdminDashboard = () => {
   const dispatch = useDispatch();
   const { items } = useSelector((state) => state.products);
@@ -16,11 +16,17 @@ const AdminDashboard = () => {
   const handleDelete = async (id) => {
     if (window.confirm('ይህ ምርት እንዲጠፋ ይፈልጋሉ?')) {
       try {
-        await API.delete(`/products/${id}`);
-        alert('ምርቱ ጠፍቷል!');
-        dispatch(fetchProducts()); // ዝርዝሩን አድስ
+        // ቶከኑን ከ localStorage መውሰድ አለብን
+        const token = localStorage.getItem('token'); 
+        const config = {
+          headers: { Authorization: `Bearer ${token}` }
+        };
+        
+        await API.delete(`/products/${id}`, config);
+        toast.success('ምርቱ በትክክል ጠፍቷል!');
+        dispatch(fetchProducts()); 
       } catch (err) {
-        alert('ማጥፋት አልተቻለም', err);
+        toast.error('ማጥፋት አልተቻለም: ' + (err.response?.data?.message || err.message));
       }
     }
   };

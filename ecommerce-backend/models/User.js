@@ -5,7 +5,14 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, default: 'user' }
+  role: { type: String, default: 'user' },
+  profilePicture: { 
+    type: String, 
+    default: function() {
+      // የኢሜይሉን Hash በመጠቀም ከ Gravatar ምስል ይወስዳል
+      return `https://www.gravatar.com/avatar/${Buffer.from(this.email).toString('hex')}?d=identicon`;
+    }
+  },
 }, { timestamps: true });
 
 // 1. የ 'next' ስህተትን ለመፍታት በቀጥታ async function ተጠቀም
