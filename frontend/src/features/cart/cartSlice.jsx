@@ -1,74 +1,44 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import axios from "axios";
 
-const cartFromStorage = localStorage.getItem('cartItems')
-      ? JSON.parse(localStorage.getItem('cartItems'))
-      :[];
-      const initialTotal = cartFromStorage.reduce((acc, item) => acc + item.price * item.quantity, 0)
-     
-const initialState = {
-  items: cartFromStorage,
-  totalAmount: initialTotal,
-};
+// ከባክአንድ ካርቱን ለመሳብ
+export const fetchCart = createAsyncThunk(
+  "cart/fetchCart",
+  async (_, thunkAPI) => {
+    try {
+      const token = thunkAPI.getState().auth.user.token;
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const { data } = await axios.get("/api/cart", config);
+      return data.cartItems;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.response.data.message);
+    }
+  },
+);
 
 const cartSlice = createSlice({
-  name: 'cart',
-  initialState,
+  name: "cart",
+  initialState: {
+    items: [],
+    totalAmount: 0,
+    status: "idle",
+  },
   reducers: {
-
-    addToCart: (state, action) => {
-      const newItem = action.payload;
-      const itemId = newItem._id || newItem.id;
-      const existingItem = state.items.find((item) => (item._id || item.id) === itemId);
-
-      if (!existingItem) {
-        // ገና ከሆነ 1 እንጨምራለን (ክምችት ካለ ብቻ)
-        if (newItem.countInStock > 0) {
-          state.items.push({ ...newItem, quantity: 1 });
-          state.totalAmount += newItem.price;
-        }
-      } else {
-        // ቀድሞ ካለ፣ መጠኑ ከክምችቱ (countInStock) ያነሰ መሆኑን እናረጋግጣለን
-        if (existingItem.quantity < newItem.countInStock) {
-          existingItem.quantity++;
-          state.totalAmount += newItem.price;
-        } else {
-          alert("ከክምችት በላይ ማዘዝ አይቻልም!");
-        }
-      }
-      state.totalAmount = state.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-      
-      localStorage.setItem('cartItems', JSON.stringify(state.items));
-    },
-    removeFromCart: (state, action) => {
-      const id = action.payload;
-      const existingItem = state.items.find((item) => (item._id || item.id) === id);
-      localStorage.setItem('cartItems', JSON.stringify(state.items));
-      if (existingItem) {
-        state.totalAmount -= existingItem.price * existingItem.quantity;
-        state.items = state.items.filter((item) => (item._id || item.id) !== id);
-      }
-    },
     clearCart: (state) => {
       state.items = [];
       state.totalAmount = 0;
-      localStorage.removeItem('cartItems');
     },
-    // መጠኑን ለመጨመር ወይም ለመቀነስ (Optional)
-    updateQuantity: (state, action) => {
-      const { id, amount } = action.payload;
-      const item = state.items.find((i) => (i._id || i.id) === id);
-      if (item) {
-        state.totalAmount += item.price * amount;
-        item.quantity += amount;
-        if (item.quantity <= 0) {
-          state.items = state.items.filter((i) => (i._id || i.id) !== id);
-        }
-        state.totalAmount = state.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-        localStorage.setItem('cartItems', JSON.stringify(state.items));
-      }
-    }
+  },
+  extraReducers: (builder) => {
+    builder.addCase(fetchCart.fulfilled, (state, action) => {
+      state.items = action.payload;
+      state.totalAmount = action.payload.reduce(
+        (acc, item) => acc + item.product.price * item.quantity,
+        0,
+      );
+    });
   },
 });
 
-export const { addToCart, removeFromCart, updateQuantity, clearCart } = cartSlice.actions;
+export const { clearCart } = cartSlice.actions;
 export default cartSlice.reducer;
