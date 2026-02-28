@@ -5,6 +5,7 @@ import {
   Heart,
   ShoppingCart,
   Trash2,
+  User,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -13,6 +14,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { addToCartBackend, addToCartLocal } from "../features/cart/cartSlice";
 import { deleteProduct } from "../features/products/productSlice";
+import API from "../services/api";
 
 const ProductCard = ({ product }) => {
   const dispatch = useDispatch();
@@ -20,26 +22,49 @@ const ProductCard = ({ product }) => {
   const { user } = useSelector((state) => state.auth);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(
+    user ? product.likes?.includes(user.id) : false,
+  );
+  const [likeCount, setLikeCount] = useState(product.likeCount || 0);
 
   const handleAddToCart = async (e) => {
     e.stopPropagation();
 
-    if (user) {
-      try {
-        await dispatch(
-          addToCartBackend({
-            productId: product._id,
-            quantity: 1,
-          }),
-        ).unwrap();
-        toast.success(`${product.name} added to cart!`);
-      } catch (err) {
-        toast.error(err.message || "Failed to add to cart");
-      }
-    } else {
+    if (!user) {
       dispatch(addToCartLocal(product));
       toast.success(`${product.name} added to cart!`);
+      return;
+    }
+
+    try {
+      await dispatch(
+        addToCartBackend({
+          productId: product._id,
+          quantity: 1,
+        }),
+      ).unwrap();
+      toast.success(`${product.name} added to cart!`);
+    } catch (err) {
+      toast.error(err.message || "Failed to add to cart");
+    }
+  };
+
+  const handleLike = async (e) => {
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error("Please login to like products");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const { data } = await API.post(`/products/${product._id}/like`);
+      setIsLiked(data.liked);
+      setLikeCount(data.likeCount);
+    } catch (err) {
+      toast.error("Failed to like product");
+      console.error(err.message);
     }
   };
 
@@ -105,11 +130,8 @@ const ProductCard = ({ product }) => {
           )}
 
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsLiked(!isLiked);
-            }}
-            className="absolute top-4 right-4 p-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-full shadow-md z-10"
+            onClick={handleLike}
+            className="absolute top-4 right-4 p-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-full shadow-md z-10 flex items-center gap-1"
           >
             <Heart
               size={22}
@@ -119,10 +141,30 @@ const ProductCard = ({ product }) => {
                   : "text-gray-400 dark:text-gray-500"
               }
             />
+            {likeCount > 0 && (
+              <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                {likeCount}
+              </span>
+            )}
           </button>
         </div>
 
         <div className="p-6 flex flex-col flex-grow">
+          {/* Creator Info */}
+          {product.user && (
+            <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
+              <User size={14} />
+              <span>Added by: {product.user.name}</span>
+              {product.user.profilePicture && (
+                <img
+                  src={product.user.profilePicture}
+                  alt={product.user.name}
+                  className="w-5 h-5 rounded-full"
+                />
+              )}
+            </div>
+          )}
+
           <h3 className="text-xl font-black text-gray-800 dark:text-white mb-2 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
             {product.name}
           </h3>

@@ -70,6 +70,26 @@ export const deleteProduct = createAsyncThunk(
   },
 );
 
+export const toggleLike = createAsyncThunk(
+  "products/toggleLike",
+  async (id, { getState, rejectWithValue }) => {
+    try {
+      const { auth } = getState();
+      const config = {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+        },
+      };
+      const response = await API.post(`/products/${id}/like`, {}, config);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data || { message: "Failed to like product" },
+      );
+    }
+  },
+);
+
 const productSlice = createSlice({
   name: "products",
   initialState: {
@@ -136,6 +156,16 @@ const productSlice = createSlice({
       .addCase(deleteProduct.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      // Toggle like
+      .addCase(toggleLike.fulfilled, (state, action) => {
+        const { productId, liked, likeCount } = action.payload;
+        const product = state.items.find((p) => p._id === productId);
+        if (product) {
+          product.liked = liked;
+          product.likeCount = likeCount;
+        }
       });
   },
 });

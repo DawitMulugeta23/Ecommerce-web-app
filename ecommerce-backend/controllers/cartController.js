@@ -9,6 +9,10 @@ export const getCart = async (req, res) => {
     let cart = await Cart.findOne({ user: req.user._id }).populate({
       path: "cartItems.product",
       model: "Product",
+      populate: {
+        path: "user",
+        select: "name email profilePicture",
+      },
     });
 
     if (!cart) {
@@ -80,7 +84,13 @@ export const addToCart = async (req, res) => {
     }
 
     await cart.save();
-    await cart.populate("cartItems.product");
+    await cart.populate({
+      path: "cartItems.product",
+      populate: {
+        path: "user",
+        select: "name email profilePicture",
+      },
+    });
 
     res.status(200).json(cart);
   } catch (error) {
@@ -128,7 +138,13 @@ export const updateCartItem = async (req, res) => {
     }
 
     await cart.save();
-    await cart.populate("cartItems.product");
+    await cart.populate({
+      path: "cartItems.product",
+      populate: {
+        path: "user",
+        select: "name email profilePicture",
+      },
+    });
 
     res.json(cart);
   } catch (error) {
@@ -152,7 +168,13 @@ export const removeFromCart = async (req, res) => {
     );
 
     await cart.save();
-    await cart.populate("cartItems.product");
+    await cart.populate({
+      path: "cartItems.product",
+      populate: {
+        path: "user",
+        select: "name email profilePicture",
+      },
+    });
 
     res.json(cart);
   } catch (error) {
@@ -197,7 +219,13 @@ export const syncCart = async (req, res) => {
     }
 
     await cart.save();
-    await cart.populate("cartItems.product");
+    await cart.populate({
+      path: "cartItems.product",
+      populate: {
+        path: "user",
+        select: "name email profilePicture",
+      },
+    });
 
     res.json(cart);
   } catch (error) {

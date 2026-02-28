@@ -5,6 +5,7 @@ import {
   Package,
   Plus,
   Trash2,
+  User,
   Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -23,7 +24,6 @@ const AdminDashboard = () => {
     (state) => state.products,
   );
 
-  // State for orders data only
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -32,35 +32,31 @@ const AdminDashboard = () => {
     revenue: 0,
   });
 
-  // 1. Fetch products via Redux (already in useEffect of the slice)
   useEffect(() => {
     dispatch(fetchProducts());
   }, [dispatch]);
 
-  // 2. Fetch orders separately
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         const { data } = await API.get("/payments/orders/admin/all");
-        setOrders(data.slice(0, 5)); // Store only recent 5 for display
-        // Calculate stats from fetched orders
+        setOrders(data.slice(0, 5));
         setStats({
           totalOrders: data.length,
           revenue: data
             .filter((o) => o.isPaid)
             .reduce((acc, o) => acc + o.totalPrice, 0),
-          totalUsers: new Set(data.map((o) => o.user?._id)).size, // Count unique users from orders
+          totalUsers: new Set(data.map((o) => o.user?._id)).size,
         });
       } catch (err) {
         console.error("Failed to fetch orders", err);
-        toast.error("Could not load orders");
       } finally {
         setOrdersLoading(false);
       }
     };
 
     fetchOrders();
-  }, []); // Empty dependency array - runs once on mount
+  }, []);
 
   const handleDelete = async (id, name) => {
     if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
@@ -69,18 +65,14 @@ const AdminDashboard = () => {
         toast.success("Product deleted successfully!");
       } catch (err) {
         toast.error("Failed to delete product!");
-        console.error(err.message)
+        console.error(err.message);
       }
     }
   };
 
-  // Derive total products directly from Redux state
-  const totalProducts = products.length;
-
   return (
     <div className="p-6 md:p-8 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-gray-900">
@@ -103,7 +95,7 @@ const AdminDashboard = () => {
               <div>
                 <p className="text-gray-500 text-sm">Total Products</p>
                 <p className="text-3xl font-black text-gray-900">
-                  {totalProducts}
+                  {products.length}
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
@@ -155,7 +147,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Products Table */}
+        {/* Products Table with Creator Info */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
           <div className="p-6 border-b border-gray-100">
             <h2 className="text-xl font-bold">Products List</h2>
@@ -175,6 +167,12 @@ const AdminDashboard = () => {
                     </th>
                     <th className="p-4 text-left text-sm font-bold text-gray-600">
                       Name
+                    </th>
+                    <th className="p-4 text-left text-sm font-bold text-gray-600">
+                      Created By
+                    </th>
+                    <th className="p-4 text-left text-sm font-bold text-gray-600">
+                      Likes
                     </th>
                     <th className="p-4 text-left text-sm font-bold text-gray-600">
                       Price
@@ -204,6 +202,31 @@ const AdminDashboard = () => {
                         />
                       </td>
                       <td className="p-4 font-medium">{product.name}</td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          {product.user?.profilePicture ? (
+                            <img
+                              src={product.user.profilePicture}
+                              alt={product.user.name}
+                              className="w-6 h-6 rounded-full"
+                            />
+                          ) : (
+                            <User size={16} className="text-gray-400" />
+                          )}
+                          <span className="text-sm">
+                            {product.user?.name || "Unknown"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-1">
+                          <Heart
+                            size={16}
+                            className="text-red-500 fill-red-500"
+                          />
+                          <span>{product.likeCount || 0}</span>
+                        </div>
+                      </td>
                       <td className="p-4 font-bold text-blue-600">
                         {product.price} ETB
                       </td>
@@ -304,7 +327,20 @@ const AdminDashboard = () => {
                         {order._id.slice(-8)}
                       </td>
                       <td className="p-4">
-                        {order.user?.name || order.user?.email || "N/A"}
+                        <div className="flex items-center gap-2">
+                          {order.user?.profilePicture ? (
+                            <img
+                              src={order.user.profilePicture}
+                              alt={order.user.name}
+                              className="w-6 h-6 rounded-full"
+                            />
+                          ) : (
+                            <User size={16} className="text-gray-400" />
+                          )}
+                          <span>
+                            {order.user?.name || order.user?.email || "N/A"}
+                          </span>
+                        </div>
                       </td>
                       <td className="p-4 font-bold">{order.totalPrice} ETB</td>
                       <td className="p-4">
