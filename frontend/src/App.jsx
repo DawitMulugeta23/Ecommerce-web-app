@@ -3,7 +3,7 @@ import Footer from "./components/Footer";
 import Navbar from "./components/Navbar";
 import ProductList from "./components/ProductList";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { ThemeProvider } from "./context/ThemeContext"; // በትክክል መምጣቱን አረጋግጥ
+import { ThemeProvider } from "./context/ThemeContext";
 import About from "./pages/About";
 import AdminAddProduct from "./pages/AdminAddProduct";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -13,32 +13,35 @@ import Checkout from "./pages/Checkout";
 import Contact from "./pages/Contact";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
+import MyOrders from "./pages/MyOrders";
 import ProductDetails from "./pages/ProductDetails";
 import Register from "./pages/Register";
 import Success from "./pages/Success";
 
 function App() {
   return (
-    // 1. ThemeProvider መላውን አፕ መክበብ አለበት
     <ThemeProvider>
       <Router>
         <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950 transition-colors duration-300">
           <Navbar />
-
-          {/* 2. ዋናው የይዘት ክፍል */}
           <main className="flex-grow">
             <Routes>
+              {/* Public Routes */}
               <Route path="/" element={<Home />} />
               <Route path="/products" element={<ProductList />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/product/:id" element={<ProductDetails />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/cart" element={<Cart />} />
 
-              {/* የተጠበቁ መንገዶች (Protected Routes) */}
+              {/* Protected Routes (Logged in users only) */}
               <Route
                 path="/my-orders"
                 element={
                   <ProtectedRoute>
-                    <div className="p-20 text-center text-2xl">የእርስዎ ትዕዛዞች</div>
+                    <MyOrders />
                   </ProtectedRoute>
                 }
               />
@@ -51,7 +54,7 @@ function App() {
                 }
               />
               <Route
-                path="/success"
+                path="/order-success/:id"
                 element={
                   <ProtectedRoute>
                     <Success />
@@ -59,15 +62,14 @@ function App() {
                 }
               />
 
-              {/* የመግቢያ ክፍሎች */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/cart" element={<Cart />} />
-
-              {/* የአድሚን ክፍሎች */}
+              {/* Admin Routes */}
               <Route
-                path="/admin/edit-product/:id"
-                element={<AdminEditProduct />}
+                path="/admin"
+                element={
+                  <ProtectedRoute isAdmin={true}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
               />
               <Route
                 path="/admin/add-product"
@@ -78,18 +80,15 @@ function App() {
                 }
               />
               <Route
-                path="/admin"
+                path="/admin/edit-product/:id"
                 element={
                   <ProtectedRoute isAdmin={true}>
-                    <AdminDashboard />
+                    <AdminEditProduct />
                   </ProtectedRoute>
                 }
               />
-
-              <Route path="/product/:id" element={<ProductDetails />} />
             </Routes>
           </main>
-
           <Footer />
         </div>
       </Router>

@@ -1,71 +1,254 @@
 import { useState } from "react";
+import { toast } from "react-hot-toast";
 import { useSelector } from "react-redux";
+import { useLocation, useNavigate } from "react-router-dom";
 import API from "../services/api";
 
+const PAYMENT_METHODS = [
+  {
+    id: "chapa",
+    name: "Chapa",
+    icon: "💳",
+    description: "Pay with Card, Telebirr, CBE Birr",
+  },
+  {
+    id: "telebirr",
+    name: "Telebirr",
+    icon: "📱",
+    description: "Pay directly with Telebirr",
+  },
+  {
+    id: "cbebirr",
+    name: "CBE Birr",
+    icon: "🏦",
+    description: "Pay with CBE Birr",
+  },
+];
+
 const Checkout = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { items, totalAmount } = useSelector((state) => state.cart);
   const { user } = useSelector((state) => state.auth);
-  const { loading, setLoading } = useState(false);
+
+  const [selectedMethod, setSelectedMethod] = useState("chapa");
+  const [loading, setLoading] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [account, setAccount] = useState("");
+
+  // Handle direct buy from product card
+  const checkoutItems = location.state?.directBuy
+    ? [{ ...location.state.product, quantity: location.state.quantity }]
+    : items;
+
+  const checkoutTotal = location.state?.directBuy
+    ? location.state.product.price * location.state.quantity
+    : totalAmount;
 
   const handlePayment = async () => {
+    if (!user) {
+      toast.error("Please login first");
+      navigate("/login");
+      return;
+    }
+
+    if (checkoutItems.length === 0) {
+      toast.error("No items to checkout!");
+      return;
+    }
+
+    // Validate required fields
+    if (selectedMethod === "telebirr" && !phone) {
+      toast.error("Please enter your Telebirr phone number");
+      return;
+    }
+    if (selectedMethod === "cbebirr" && !account) {
+      toast.error("Please enter your CBE Birr account");
+      return;
+    }
+
     setLoading(true);
-    const tx_ref = `tx-${Date.now()}`; // ለየክፍያው የተለየ መታወቂያ
+    const tx_ref = `tx-${Date.now()}`;
 
     try {
       const paymentData = {
-        amount: totalAmount,
+        amount: checkoutTotal,
         email: user.email,
         firstName: user.name.split(" ")[0],
         lastName: user.name.split(" ")[1] || "Customer",
         tx_ref,
+        items: checkoutItems,
+        ...(selectedMethod === "telebirr" && { phone }),
+        ...(selectedMethod === "cbebirr" && { account }),
       };
 
-      const { data } = await API.post(
-        "/payments/chapa/initialize",
-        paymentData,
-      );
+      let endpoint = "";
+      switch (selectedMethod) {
+        case "chapa":
+          endpoint = "/payments/chapa/initialize";
+          break;
+        case "telebirr":
+          endpoint = "/payments/telebirr/initialize";
+          break;
+        case "cbebirr":
+          endpoint = "/payments/cbebirr/initialize";
+          break;
+        default:
+          endpoint = "/payments/chapa/initialize";
+      }
 
-      if (data.data && data.data.checkout_url) {
-        // ተጠቃሚውን ወደ Chapa የክፍያ ገጽ መውሰጃ መስመር፡
+      const { data } = await API.post(endpoint, paymentData);
+
+      if (data.data?.checkout_url) {
         window.location.href = data.data.checkout_url;
+      } else if (data.checkout_url) {
+        window.location.href = data.checkout_url;
       } else {
-        alert("የክፍያ ሊንክ ማግኘት አልተቻለም!");
+        toast.success("Payment initiated! Please complete the payment.");
+        navigate(`/order-success/${data.orderId}`);
       }
     } catch (err) {
-      console.error("Payment failed", err);
-      alert(err.response?.data?.message || "ክፍያ መጀመር አልተቻለም");
+      toast.error(err.response?.data?.message || "Payment failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-10">
-      {/* በ return ውስጥ items-ን እንዲህ ተጠቀምባቸው */}
-      <div className="mb-6">
-        <h3 className="font-bold mb-2">የሚገዙ ዕቃዎች ዝርዝር፡</h3>
-        {items.map((item) => (
-          <div key={item._id} className="flex justify-between border-b py-2">
-            <span>
-              {item.name} (x{item.quantity})
-            </span>
-            <span>{item.price * item.quantity} ETB</span>
+    <div className="max-w-4xl mx-auto p-6 md:p-10">
+      <h1 className="text-4xl font-black text-gray-900 mb-8 text-center">
+        Complete Your Order
+      </h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Left side - Order items */}
+        <div className="md:col-span-2 space-y-6">
+          <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">
+                1
+              </span>
+              Order Summary
+            </h2>
+
+            <div className="space-y-4">
+              {checkoutItems.map((item) => (
+                <div
+                  key={item._id || item.id}
+                  className="flex gap-4 border-b pb-4"
+                >
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-20 h-20 object-cover rounded-xl"
+                  />
+                  <div className="flex-1">
+                    <h3 className="font-bold">{item.name}</h3>
+                    <p className="text-gray-500 text-sm">
+                      Quantity: {item.quantity} x {item.price} ETB
+                    </p>
+                  </div>
+                  <div className="font-bold text-blue-600">
+                    {item.price * item.quantity} ETB
+                  </div>
+                </div>
+              ))}
+
+              <div className="flex justify-between pt-4 text-xl font-black">
+                <span>Total:</span>
+                <span className="text-blue-600">{checkoutTotal} ETB</span>
+              </div>
+            </div>
           </div>
-        ))}
-      </div>
-      <h2 className="text-2xl font-bold mb-6">ትዕዛዝዎን ያጠናቅቁ</h2>
-      <div className="bg-white shadow-xl rounded-2xl p-8 border border-gray-100">
-        <div className="flex justify-between mb-6 text-xl">
-          <span className="text-gray-600">ጠቅላላ ድምር:</span>
-          <span className="font-black text-blue-600">{totalAmount} ETB</span>
         </div>
 
-        <button
-          onClick={handlePayment}
-          className="w-full bg-[#ff9900] hover:bg-[#e68a00] text-white py-4 rounded-xl font-bold text-lg transition-transform active:scale-95 shadow-lg"
-        >
-          በ Chapa ክፍያ ፈጽም
-        </button>
+        {/* Right side - Payment methods */}
+        <div className="space-y-6">
+          <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100 sticky top-24">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">
+                2
+              </span>
+              Payment Method
+            </h2>
+
+            <div className="space-y-3 mb-6">
+              {PAYMENT_METHODS.map((method) => (
+                <label
+                  key={method.id}
+                  className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    selectedMethod === method.id
+                      ? "border-blue-600 bg-blue-50"
+                      : "border-gray-200 hover:border-blue-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={method.id}
+                    checked={selectedMethod === method.id}
+                    onChange={(e) => setSelectedMethod(e.target.value)}
+                    className="mr-3"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{method.icon}</span>
+                      <span className="font-bold">{method.name}</span>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      {method.description}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {/* Additional fields */}
+            {selectedMethod === "telebirr" && (
+              <div className="mb-6">
+                <label className="block text-sm font-bold mb-2">
+                  Telebirr Phone Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="09xxxxxxxx"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                  required
+                />
+              </div>
+            )}
+
+            {selectedMethod === "cbebirr" && (
+              <div className="mb-6">
+                <label className="block text-sm font-bold mb-2">
+                  CBE Birr Account Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter your CBE Birr account"
+                  value={account}
+                  onChange={(e) => setAccount(e.target.value)}
+                  className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                  required
+                />
+              </div>
+            )}
+
+            <button
+              onClick={handlePayment}
+              disabled={loading || checkoutItems.length === 0}
+              className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Processing..." : "Pay Now"}
+            </button>
+
+            <p className="text-xs text-gray-400 text-center mt-4">
+              Your payment information is secure
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

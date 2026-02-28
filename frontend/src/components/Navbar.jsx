@@ -12,7 +12,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { logout } from "../features/auth/authSlice";
-import { clearCart } from "../features/cart/cartSlice";
+import { clearCart } from "../features/cart/cartSlice"; // ✅ Now this works
 
 const Navbar = () => {
   const { user } = useSelector((state) => state.auth);
@@ -28,7 +28,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    dispatch(clearCart());
+    dispatch(clearCart()); // ✅ Now this works
     setIsProfileOpen(false);
     navigate("/login");
   };
@@ -63,6 +63,11 @@ const Navbar = () => {
           <Link to="/contact" className="hover:text-blue-600 transition">
             Contact
           </Link>
+          {user && (
+            <Link to="/my-orders" className="hover:text-blue-600 transition">
+              My Orders
+            </Link>
+          )}
         </div>
 
         {/* Right Side Icons */}
@@ -81,7 +86,7 @@ const Navbar = () => {
             >
               <ShoppingCart size={24} />
               {cartCount > 0 && (
-                <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900">
                   {cartCount}
                 </span>
               )}
@@ -90,45 +95,68 @@ const Navbar = () => {
 
           {user ? (
             <div className="relative">
-              {/* Profile Image Trigger (No Dropdown Icon) */}
+              {/* Profile Image Trigger */}
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center focus:outline-none"
               >
                 <img
-                  src={user.profilePicture}
+                  src={
+                    user.profilePicture ||
+                    `https://ui-avatars.com/api/?name=${user.name}&background=3b82f6&color=fff&bold=true`
+                  }
                   className="w-10 h-10 rounded-full object-cover border-2 border-blue-500 hover:ring-4 ring-blue-100 dark:ring-blue-900/30 transition cursor-pointer"
                   alt="profile"
                 />
               </button>
 
-              {/* Logout Popup */}
+              {/* Profile Dropdown Menu */}
               {isProfileOpen && (
                 <>
                   <div
                     className="fixed inset-0 z-10"
                     onClick={() => setIsProfileOpen(false)}
                   ></div>
-                  <div className="absolute right-0 mt-3 w-44 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in duration-150">
+                  <div className="absolute right-0 mt-3 w-48 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in duration-150">
                     <div className="px-4 py-3 border-b dark:border-gray-700">
                       <p className="text-sm font-bold text-gray-800 dark:text-white truncate">
                         {user.name}
                       </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {user.email}
+                      </p>
                     </div>
 
+                    <Link
+                      to="/my-orders"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm font-semibold"
+                    >
+                      <ShoppingCart size={18} /> My Orders
+                    </Link>
+
                     {user.role === "admin" && (
-                      <Link
-                        to="/admin/add-product"
-                        onClick={() => setIsProfileOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition text-sm font-semibold"
-                      >
-                        <PlusCircle size={18} /> Add Product
-                      </Link>
+                      <>
+                        <Link
+                          to="/admin"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition text-sm font-semibold"
+                        >
+                          <PlusCircle size={18} /> Dashboard
+                        </Link>
+                        <Link
+                          to="/admin/add-product"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition text-sm font-semibold"
+                        >
+                          <PlusCircle size={18} /> Add Product
+                        </Link>
+                      </>
                     )}
 
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition text-sm font-semibold"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition text-sm font-semibold border-t dark:border-gray-700"
                     >
                       <LogOut size={18} /> Logout
                     </button>
@@ -146,6 +174,42 @@ const Navbar = () => {
           )}
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      {isOpen && (
+        <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 py-4 px-4">
+          <Link
+            to="/"
+            className="block py-2 font-bold dark:text-white"
+            onClick={() => setIsOpen(false)}
+          >
+            Home
+          </Link>
+          <Link
+            to="/products"
+            className="block py-2 font-bold dark:text-white"
+            onClick={() => setIsOpen(false)}
+          >
+            Products
+          </Link>
+          <Link
+            to="/contact"
+            className="block py-2 font-bold dark:text-white"
+            onClick={() => setIsOpen(false)}
+          >
+            Contact
+          </Link>
+          {user && (
+            <Link
+              to="/my-orders"
+              className="block py-2 font-bold dark:text-white"
+              onClick={() => setIsOpen(false)}
+            >
+              My Orders
+            </Link>
+          )}
+        </div>
+      )}
     </nav>
   );
 };

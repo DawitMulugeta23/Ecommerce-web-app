@@ -1,15 +1,17 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const productSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  description: { type: String, required: true },
-  price: { type: Number,required: true, default: 0 
+const productSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    description: { type: String, required: true },
+    price: { type: Number, required: true },
+    oldPrice: { type: Number }, // Added for sale price display
+    image: { type: String, required: true },
+    category: { type: String, required: true },
+    countInStock: { type: Number, required: true, default: 5 },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   },
-  image: { type: String, required: true }, // የምስሉ ሊንክ
-  category: { type: String, required: true },
-  countInStock: { type: Number, required: true, default:5 // 👈 እዚህም መቀየር ትችላለህ
-  },
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true } // የትኛው አድሚን እንደጨመረው ለማወቅ
-}, { timestamps: true });
+  { timestamps: true },
+);
 
-export default mongoose.model('Product', productSchema);
+export default mongoose.model("Product", productSchema);

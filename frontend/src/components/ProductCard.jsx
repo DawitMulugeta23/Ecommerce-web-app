@@ -11,9 +11,8 @@ import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
-import { addToCart } from "../features/cart/cartSlice";
-import { fetchProducts } from "../features/products/productSlice";
-import API from "../services/api";
+import { addToCartBackend, addToCartLocal } from "../features/cart/cartSlice";
+import { deleteProduct } from "../features/products/productSlice";
 
 const ProductCard = ({ product }) => {
   const dispatch = useDispatch();
@@ -23,33 +22,53 @@ const ProductCard = ({ product }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
-  const handleAddToCart = (e) => {
+  const handleAddToCart = async (e) => {
     e.stopPropagation();
-    dispatch(addToCart(product));
-    toast.success(`${product.name} ታክሏል!`);
+
+    if (user) {
+      try {
+        await dispatch(
+          addToCartBackend({
+            productId: product._id,
+            quantity: 1,
+          }),
+        ).unwrap();
+        toast.success(`${product.name} added to cart!`);
+      } catch (err) {
+        toast.error(err.message || "Failed to add to cart");
+      }
+    } else {
+      dispatch(addToCartLocal(product));
+      toast.success(`${product.name} added to cart!`);
+    }
   };
 
   const handleBuyNow = (e) => {
     e.stopPropagation();
-    dispatch(addToCart(product));
-    navigate("/checkout");
+
+    if (!user) {
+      dispatch(addToCartLocal(product));
+      toast.success("Please login to continue");
+      navigate("/login");
+    } else {
+      navigate("/checkout", {
+        state: {
+          directBuy: true,
+          product: product,
+          quantity: 1,
+        },
+      });
+    }
   };
 
   const handleDelete = async (e) => {
     e.stopPropagation();
-    if (window.confirm(`እርግጠኛ ነዎት "${product.name}" መሰረዝ ይፈልጋሉ?`)) {
+    if (window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
       try {
-        const config = {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-            "Content-Type": "application/json",
-          },
-        };
-        await API.delete(`/products/${product._id}`, config);
-        toast.success("ምርቱ ተሰርዟል!");
-        dispatch(fetchProducts());
+        await dispatch(deleteProduct(product._id)).unwrap();
+        toast.success("Product deleted successfully!");
       } catch (err) {
-        toast.error(err.response?.data?.message || "መሰረዝ አልተቻለም");
+        toast.error(err?.message || "Failed to delete product");
       }
     }
   };
@@ -57,7 +76,6 @@ const ProductCard = ({ product }) => {
   return (
     <>
       <div className="group bg-white dark:bg-gray-900 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 dark:border-gray-800 flex flex-col h-full relative">
-        {/* ምስል ክፍል */}
         <div
           className="relative h-80 md:h-96 w-full overflow-hidden cursor-zoom-in"
           onClick={() => setIsModalOpen(true)}
@@ -68,7 +86,6 @@ const ProductCard = ({ product }) => {
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
 
-          {/* የአድሚን ቁልፎች */}
           {user && user.role === "admin" && (
             <div className="absolute top-4 left-4 flex gap-2 z-20">
               <Link
@@ -105,7 +122,6 @@ const ProductCard = ({ product }) => {
           </button>
         </div>
 
-        {/* መረጃዎች */}
         <div className="p-6 flex flex-col flex-grow">
           <h3 className="text-xl font-black text-gray-800 dark:text-white mb-2 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
             {product.name}
@@ -148,7 +164,6 @@ const ProductCard = ({ product }) => {
         </div>
       </div>
 
-      {/* ምስል Modal */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4"
