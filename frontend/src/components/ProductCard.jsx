@@ -23,29 +23,39 @@ const ProductCard = ({ product }) => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(
-    user ? product.likes?.includes(user.id) : false,
+    user && product.likes ? product.likes.includes(user.id) : false,
   );
   const [likeCount, setLikeCount] = useState(product.likeCount || 0);
 
   const handleAddToCart = async (e) => {
     e.stopPropagation();
 
+    if (product.countInStock <= 0) {
+      toast.error("Product out of stock!");
+      return;
+    }
+
     if (!user) {
+      // Guest user - save to localStorage
       dispatch(addToCartLocal(product));
       toast.success(`${product.name} added to cart!`);
       return;
     }
 
+    // Logged in user - save to database
     try {
-      await dispatch(
+      const result = await dispatch(
         addToCartBackend({
           productId: product._id,
           quantity: 1,
         }),
       ).unwrap();
+
+      console.log("Add to cart result:", result);
       toast.success(`${product.name} added to cart!`);
     } catch (err) {
-      toast.error(err.message || "Failed to add to cart");
+      console.error("Add to cart error:", err);
+      toast.error(err?.message || "Failed to add to cart");
     }
   };
 
@@ -70,6 +80,11 @@ const ProductCard = ({ product }) => {
 
   const handleBuyNow = (e) => {
     e.stopPropagation();
+
+    if (product.countInStock <= 0) {
+      toast.error("Product out of stock!");
+      return;
+    }
 
     if (!user) {
       dispatch(addToCartLocal(product));
@@ -186,13 +201,15 @@ const ProductCard = ({ product }) => {
           <div className="flex gap-2 mt-auto">
             <button
               onClick={handleBuyNow}
-              className="flex-1 h-14 bg-green-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-green-700 shadow-lg shadow-green-100 dark:shadow-none transition-all active:scale-95"
+              disabled={product.countInStock === 0}
+              className="flex-1 h-14 bg-green-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-green-700 shadow-lg shadow-green-100 dark:shadow-none transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CreditCard size={20} /> <span>Buy</span>
             </button>
             <button
               onClick={handleAddToCart}
-              className="flex-1 h-14 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 shadow-lg shadow-blue-100 dark:shadow-none transition-all active:scale-95"
+              disabled={product.countInStock === 0}
+              className="flex-1 h-14 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 shadow-lg shadow-blue-100 dark:shadow-none transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ShoppingCart size={20} /> <span>Add</span>
             </button>

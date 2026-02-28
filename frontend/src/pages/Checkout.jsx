@@ -28,7 +28,7 @@ const PAYMENT_METHODS = [
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { items, totalAmount } = useSelector((state) => state.cart);
+  const { items } = useSelector((state) => state.cart);
   const { user } = useSelector((state) => state.auth);
 
   const [selectedMethod, setSelectedMethod] = useState("chapa");
@@ -43,7 +43,15 @@ const Checkout = () => {
 
   const checkoutTotal = location.state?.directBuy
     ? location.state.product.price * location.state.quantity
-    : totalAmount;
+    : checkoutItems.reduce(
+        (acc, item) => acc + Number(item.price) * Number(item.quantity),
+        0,
+      );
+
+  const totalItems = checkoutItems.reduce(
+    (acc, item) => acc + item.quantity,
+    0,
+  );
 
   const handlePayment = async () => {
     if (!user) {
@@ -104,10 +112,11 @@ const Checkout = () => {
       } else if (data.checkout_url) {
         window.location.href = data.checkout_url;
       } else {
-        toast.success("Payment initiated! Please complete the payment.");
+        toast.success("Order placed successfully!");
         navigate(`/order-success/${data.orderId}`);
       }
     } catch (err) {
+      console.error("Payment error:", err);
       toast.error(err.response?.data?.message || "Payment failed");
     } finally {
       setLoading(false);
@@ -124,12 +133,17 @@ const Checkout = () => {
         {/* Left side - Order items */}
         <div className="md:col-span-2 space-y-6">
           <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">
-                1
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">
+                  1
+                </span>
+                Order Summary
+              </h2>
+              <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-bold">
+                {totalItems} {totalItems === 1 ? "item" : "items"}
               </span>
-              Order Summary
-            </h2>
+            </div>
 
             <div className="space-y-4">
               {checkoutItems.map((item) => (
@@ -149,7 +163,7 @@ const Checkout = () => {
                     </p>
                   </div>
                   <div className="font-bold text-blue-600">
-                    {item.price * item.quantity} ETB
+                    {Number(item.price) * Number(item.quantity)} ETB
                   </div>
                 </div>
               ))}
@@ -241,7 +255,7 @@ const Checkout = () => {
               disabled={loading || checkoutItems.length === 0}
               className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Processing..." : "Pay Now"}
+              {loading ? "Processing..." : `Pay ${checkoutTotal} ETB`}
             </button>
 
             <p className="text-xs text-gray-400 text-center mt-4">

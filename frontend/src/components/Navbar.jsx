@@ -7,12 +7,12 @@ import {
   Sun,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { logout } from "../features/auth/authSlice";
-import { clearCart } from "../features/cart/cartSlice"; // ✅ Now this works
+import { clearCart, fetchCart } from "../features/cart/cartSlice";
 
 const Navbar = () => {
   const { user } = useSelector((state) => state.auth);
@@ -24,11 +24,22 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const cartCount = items.reduce((total, item) => total + item.quantity, 0);
+  // Calculate cart count - this updates in real-time as items change
+  const cartCount = items.reduce(
+    (total, item) => total + (item.quantity || 1),
+    0,
+  );
+
+  // Fetch cart when user logs in
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchCart());
+    }
+  }, [user, dispatch]);
 
   const handleLogout = () => {
     dispatch(logout());
-    dispatch(clearCart()); // ✅ Now this works
+    dispatch(clearCart());
     setIsProfileOpen(false);
     navigate("/login");
   };
@@ -79,6 +90,7 @@ const Navbar = () => {
             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>
 
+          {/* Cart Icon with Count - Always visible for logged in users */}
           {user && (
             <Link
               to="/cart"
@@ -86,7 +98,22 @@ const Navbar = () => {
             >
               <ShoppingCart size={24} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 font-bold animate-pulse">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+          )}
+
+          {/* Cart Icon for guests - also shows count from localStorage */}
+          {!user && (
+            <Link
+              to="/cart"
+              className="relative p-2 dark:text-white hover:text-blue-600 transition"
+            >
+              <ShoppingCart size={24} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 font-bold">
                   {cartCount}
                 </span>
               )}
@@ -208,6 +235,19 @@ const Navbar = () => {
               My Orders
             </Link>
           )}
+          {/* Cart link in mobile menu with count */}
+          <Link
+            to="/cart"
+            className="block py-2 font-bold dark:text-white flex items-center justify-between"
+            onClick={() => setIsOpen(false)}
+          >
+            <span>Cart</span>
+            {cartCount > 0 && (
+              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                {cartCount}
+              </span>
+            )}
+          </Link>
         </div>
       )}
     </nav>
