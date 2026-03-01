@@ -1,13 +1,14 @@
+// routes/paymentRoutes.js
 import express from "express";
 import {
+  cancelOrder,
   chapaWebhook,
+  deleteOrder,
   getAllOrders,
   getOrderById,
   getPaymentMethods,
   getUserOrders,
-  initializeCbeBirrPayment,
   initializeChapaPayment,
-  initializeTelebirrPayment,
   updateOrderStatus,
   verifyPayment,
 } from "../controllers/paymentController.js";
@@ -23,14 +24,14 @@ router.post("/webhook", chapaWebhook);
 // Protected user routes
 router.get("/orders", protect, getUserOrders);
 router.get("/orders/:id", protect, getOrderById);
+router.put("/orders/:id/cancel", protect, cancelOrder); // User can cancel their own orders
 
 // Protected admin routes
 router.get("/orders/admin/all", protect, admin, getAllOrders);
 router.put("/orders/:id/status", protect, admin, updateOrderStatus);
+router.delete("/orders/:id", protect, admin, deleteOrder); // Admin delete route
 
-// Payment initialization routes (protected)
+// Payment initialization routes (protected) - Only Chapa
 router.post("/chapa/initialize", protect, initializeChapaPayment);
-router.post("/telebirr/initialize", protect, initializeTelebirrPayment);
-router.post("/cbebirr/initialize", protect, initializeCbeBirrPayment);
 
 export default router;

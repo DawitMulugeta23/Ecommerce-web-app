@@ -1,9 +1,11 @@
+// client/src/pages/ProductDetails.jsx
 import { ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import { addToCartBackend, addToCartLocal } from "../features/cart/cartSlice"; // Fixed import
+import RelatedProducts from "../components/RelatedProducts";
+import { addToCartBackend, addToCartLocal } from "../features/cart/cartSlice";
 import API from "../services/api";
 
 const ProductDetail = () => {
@@ -13,6 +15,7 @@ const ProductDetail = () => {
   const { user } = useSelector((state) => state.auth);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -22,12 +25,13 @@ const ProductDetail = () => {
       } catch (err) {
         console.error("Failed to fetch product", err);
         toast.error("Product not found");
+        navigate("/");
       } finally {
         setLoading(false);
       }
     };
     fetchProduct();
-  }, [id]);
+  }, [id, navigate]);
 
   const handleAddToCart = () => {
     if (!product || product.countInStock === 0) {
@@ -35,8 +39,13 @@ const ProductDetail = () => {
       return;
     }
 
+    if (quantity > product.countInStock) {
+      toast.error(`Only ${product.countInStock} items available!`);
+      return;
+    }
+
     if (user) {
-      dispatch(addToCartBackend({ productId: product._id, quantity: 1 }))
+      dispatch(addToCartBackend({ productId: product._id, quantity }))
         .unwrap()
         .then(() => {
           toast.success(`${product.name} added to cart!`);
@@ -45,8 +54,35 @@ const ProductDetail = () => {
           toast.error(err.message || "Failed to add to cart");
         });
     } else {
-      dispatch(addToCartLocal(product));
-      toast.success(`${product.name} added to cart!`);
+      // For local cart, we need to add multiple quantities
+      for (let i = 0; i < quantity; i++) {
+        dispatch(addToCartLocal(product));
+      }
+      toast.success(`${quantity} x ${product.name} added to cart!`);
+    }
+  };
+
+  const handleBuyNow = () => {
+    if (!product || product.countInStock === 0) {
+      toast.error("Product out of stock");
+      return;
+    }
+
+    if (!user) {
+      // Add to cart and redirect to login
+      for (let i = 0; i < quantity; i++) {
+        dispatch(addToCartLocal(product));
+      }
+      toast.success("Please login to continue");
+      navigate("/login");
+    } else {
+      navigate("/checkout", {
+        state: {
+          directBuy: true,
+          product: product,
+          quantity: quantity,
+        },
+      });
     }
   };
 
@@ -62,8 +98,20 @@ const ProductDetail = () => {
         navigate("/");
       } catch (err) {
         toast.error("Failed to delete product");
-        console.error(err.message)
+        console.error(err.message);
       }
+    }
+  };
+
+  const incrementQuantity = () => {
+    if (product && quantity < product.countInStock) {
+      setQuantity(quantity + 1);
+    }
+  };
+
+  const decrementQuantity = () => {
+    if (quantity > 1) {
+      setQuantity(quantity - 1);
     }
   };
 
@@ -122,11 +170,17 @@ const ProductDetail = () => {
               {product.price} <span className="text-lg text-gray-400">ETB</span>
             </p>
 
+            {product.oldPrice && product.oldPrice > product.price && (
+              <del className="text-xl text-red-400 font-bold">
+                {product.oldPrice} ETB
+              </del>
+            )}
+
             <p className="text-gray-500 dark:text-gray-400 text-xl leading-relaxed font-medium">
               {product.description}
             </p>
 
-            <div className="pt-10 border-t border-gray-100 dark:border-gray-800">
+            <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-3 mb-6">
                 <div
                   className={`h-3 w-3 rounded-full ${
@@ -144,17 +198,77 @@ const ProductDetail = () => {
                 </p>
               </div>
 
-              <button
-                onClick={handleAddToCart}
-                disabled={product.countInStock === 0}
-                className="w-full h-16 bg-gray-900 dark:bg-blue-600 text-white rounded-2xl font-black text-xl hover:bg-blue-600 dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-3 shadow-xl disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
-              >
-                <ShoppingCart size={24} />
-                Add to Cart
-              </button>
+              {/* Quantity Selector */}
+              {product.countInStock > 0 && (
+                <div className="flex items-center gap-4 mb-6">
+                  <span className="font-bold text-gray-700 dark:text-gray-300">
+                    Quantity:
+                  </span>
+                  <div className="flex items-center border rounded-lg bg-gray-50 dark:bg-gray-800">
+                    <button
+                      onClick={decrementQuantity}
+                      disabled={quantity <= 1}
+                      className="px-4 py-2 text-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 rounded-l-lg disabled:opacity-50"
+                    >
+                      -
+                    </button>
+                    <span className="px-6 py-2 font-bold dark:text-white">
+                      {quantity}
+                    </span>
+                    <button
+                      onClick={incrementQuantity}
+                      disabled={quantity >= product.countInStock}
+                      className="px-4 py-2 text-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 rounded-r-lg disabled:opacity-50"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    Max: {product.countInStock}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex gap-4">
+                <button
+                  onClick={handleBuyNow}
+                  disabled={product.countInStock === 0}
+                  className="flex-1 h-16 bg-green-600 text-white rounded-2xl font-black text-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 shadow-xl disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+                >
+                  Buy Now
+                </button>
+                <button
+                  onClick={handleAddToCart}
+                  disabled={product.countInStock === 0}
+                  className="flex-1 h-16 bg-blue-600 text-white rounded-2xl font-black text-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-3 shadow-xl disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+                >
+                  <ShoppingCart size={24} />
+                  Add to Cart
+                </button>
+              </div>
             </div>
+
+            {/* Creator Info */}
+            {product.user && (
+              <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Added by:{" "}
+                  <span className="font-bold text-gray-700 dark:text-gray-300">
+                    {product.user.name}
+                  </span>
+                </p>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Related Products Section */}
+        {product && (
+          <RelatedProducts
+            currentProductId={product._id}
+            category={product.category}
+          />
+        )}
       </div>
     </div>
   );

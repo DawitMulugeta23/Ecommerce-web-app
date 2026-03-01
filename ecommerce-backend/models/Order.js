@@ -1,3 +1,4 @@
+// models/Order.js
 import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema(
@@ -16,16 +17,28 @@ const orderSchema = new mongoose.Schema(
         image: { type: String, required: true },
       },
     ],
+    shippingAddress: {
+      address: { type: String },
+      city: { type: String },
+      phone: { type: String },
+    },
     totalPrice: { type: Number, required: true },
     paymentMethod: {
       type: String,
-      enum: ["chapa", "telebirr", "cbebirr"],
+      enum: ["chapa"],
       required: true,
     },
     paymentResult: {
       tx_ref: String,
       status: { type: String, default: "pending" },
       checkout_url: String,
+      method: String,
+      customer: {
+        email: String,
+        phone: String,
+        address: String,
+        city: String,
+      },
     },
     isPaid: { type: Boolean, default: false },
     paidAt: Date,
@@ -38,6 +51,5 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// ይሄ መስመር ነው ዋናው መፍትሄ፡
 const Order = mongoose.model("Order", orderSchema);
 export default Order;

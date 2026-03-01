@@ -1,3 +1,4 @@
+// controllers/paymentController.js
 import axios from "axios";
 import Cart from "../models/Cart.js";
 import Order from "../models/Order.js";
@@ -8,9 +9,21 @@ import Product from "../models/Product.js";
 // @access  Private
 export const initializeChapaPayment = async (req, res) => {
   try {
-    const { amount, email, firstName, lastName, tx_ref, items } = req.body;
+    const {
+      amount,
+      email,
+      firstName,
+      lastName,
+      phone,
+      address,
+      city,
+      tx_ref,
+      items,
+      payment_method,
+      payment_data,
+    } = req.body;
 
-    // Create order in database
+    // Create order in database with customer info
     const order = await Order.create({
       user: req.user._id,
       orderItems: items.map((item) => ({
@@ -22,8 +35,36 @@ export const initializeChapaPayment = async (req, res) => {
       })),
       totalPrice: amount,
       paymentMethod: "chapa",
-      paymentResult: { tx_ref, status: "pending" },
+      paymentResult: {
+        tx_ref,
+        status: "pending",
+        method: payment_method,
+        customer: {
+          email,
+          phone,
+          address,
+          city,
+        },
+      },
+      shippingAddress: {
+        address,
+        city,
+        phone,
+      },
     });
+
+    // Prepare metadata for Chapa
+    const metadata = {
+      order_id: order._id.toString(),
+      customer_name: `${firstName} ${lastName}`,
+      customer_phone: phone,
+      payment_method: payment_method,
+      items: items.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+    };
 
     const response = await axios.post(
       "https://api.chapa.co/v1/transaction/initialize",
@@ -40,6 +81,7 @@ export const initializeChapaPayment = async (req, res) => {
           title: "MyStore Payment",
           description: `Payment for order #${order._id}`,
         },
+        meta: metadata,
       },
       {
         headers: {
@@ -75,107 +117,148 @@ export const initializeChapaPayment = async (req, res) => {
   }
 };
 
-// @desc    Initialize Telebirr Payment
-// @route   POST /api/payments/telebirr/initialize
-// @access  Private
-export const initializeTelebirrPayment = async (req, res) => {
+
+export const deleteOrder = async (req, res) => {
   try {
-    const { amount, phone, items, tx_ref } = req.body;
+    const order = await Order.findById(req.params.id);
 
-    // Create order
-    const order = await Order.create({
-      user: req.user._id,
-      orderItems: items.map((item) => ({
-        product: item._id || item.id,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        image: item.image,
-      })),
-      totalPrice: amount,
-      paymentMethod: "telebirr",
-      paymentResult: { tx_ref, status: "pending" },
-    });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found!" });
+    }
 
-    // Here you would integrate Telebirr API
-    // For now, simulate successful response
-    res.json({
-      status: "success",
-      message: "Telebirr payment initiated",
-      orderId: order._id,
-      checkout_url: `https://pay.telebirr.com/pay?orderId=${order._id}`,
+    // Check if order is paid - prevent deletion of paid orders
+    if (order.isPaid) {
+      return res.status(400).json({ 
+        message: "Cannot delete paid orders. Paid orders must be kept for record keeping." 
+      });
+    }
+
+    // Store order info before deletion for response
+    const orderInfo = {
+      id: order._id,
+      totalPrice: order.totalPrice,
+      orderStatus: order.orderStatus
+    };
+
+    // Permanently delete the order from database
+    await Order.findByIdAndDelete(req.params.id);
+    
+    console.log(`Order ${req.params.id} deleted successfully by admin`);
+    
+    res.json({ 
+      success: true,
+      message: "Order deleted successfully",
+      deletedOrderId: order._id,
+      order: orderInfo
     });
   } catch (error) {
+    console.error("Delete order error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Initialize CBE Birr Payment
-// @route   POST /api/payments/cbebirr/initialize
+// @desc    Cancel Order (User or Admin) - Just updates status to cancelled
+// @route   PUT /api/payments/orders/:id/cancel
 // @access  Private
-export const initializeCbeBirrPayment = async (req, res) => {
+export const cancelOrder = async (req, res) => {
   try {
-    const { amount, account, items, tx_ref } = req.body;
+    const order = await Order.findById(req.params.id);
 
-    // Create order
-    const order = await Order.create({
-      user: req.user._id,
-      orderItems: items.map((item) => ({
-        product: item._id || item.id,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        image: item.image,
-      })),
-      totalPrice: amount,
-      paymentMethod: "cbebirr",
-      paymentResult: { tx_ref, status: "pending" },
-    });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found!" });
+    }
 
-    // Here you would integrate CBE Birr API
+    // Check if user is authorized (order owner or admin)
+    if (
+      order.user.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to cancel this order" });
+    }
+
+    // Check if order can be cancelled
+    if (
+      order.orderStatus === "delivered" ||
+      order.orderStatus === "cancelled"
+    ) {
+      return res.status(400).json({
+        message: `Order cannot be cancelled as it is already ${order.orderStatus}`,
+      });
+    }
+
+    if (order.isPaid) {
+      return res.status(400).json({
+        message: "Paid orders cannot be cancelled. Please contact support.",
+      });
+    }
+
+    order.orderStatus = "cancelled";
+    await order.save();
+
     res.json({
-      status: "success",
-      message: "CBE Birr payment initiated",
-      orderId: order._id,
+      message: "Order cancelled successfully",
+      order,
     });
   } catch (error) {
+    console.error("Cancel order error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Verify Payment
-// @route   GET /api/payments/verify/:tx_ref
-// @access  Public
+// Rest of your existing functions remain the same...
 export const verifyPayment = async (req, res) => {
   try {
     const { tx_ref } = req.params;
 
-    const response = await axios.get(
-      `https://api.chapa.co/v1/transaction/verify/${tx_ref}`,
-      {
-        headers: { Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}` },
-      },
-    );
+    // Check if order exists with this tx_ref
+    const order = await Order.findOne({ "paymentResult.tx_ref": tx_ref });
 
-    if (response.data.data.status === "success") {
-      const order = await Order.findOne({ "paymentResult.tx_ref": tx_ref });
-      if (order && !order.isPaid) {
-        order.isPaid = true;
-        order.paidAt = Date.now();
-        order.paymentResult.status = "success";
-
-        // Update product stock
-        for (const item of order.orderItems) {
-          await Product.findByIdAndUpdate(item.product, {
-            $inc: { countInStock: -item.quantity },
-          });
-        }
-
-        await order.save();
-      }
+    if (order) {
+      return res.json({
+        status: "success",
+        data: {
+          status: order.isPaid ? "success" : "pending",
+          orderId: order._id,
+        },
+      });
     }
 
-    res.json(response.data);
+    // If not found in our DB, verify with Chapa
+    try {
+      const response = await axios.get(
+        `https://api.chapa.co/v1/transaction/verify/${tx_ref}`,
+        {
+          headers: { Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}` },
+        },
+      );
+
+      if (response.data.data.status === "success") {
+        const order = await Order.findOne({ "paymentResult.tx_ref": tx_ref });
+        if (order && !order.isPaid) {
+          order.isPaid = true;
+          order.paidAt = Date.now();
+          order.paymentResult.status = "success";
+
+          // Update product stock
+          for (const item of order.orderItems) {
+            await Product.findByIdAndUpdate(item.product, {
+              $inc: { countInStock: -item.quantity },
+            });
+          }
+
+          await order.save();
+        }
+      }
+
+      res.json(response.data);
+    } catch (chapaError) {
+      res.status(400).json({
+        status: "error",
+        message: "Transaction not found or verification failed",
+      });
+    }
   } catch (error) {
     res
       .status(500)
@@ -226,20 +309,6 @@ export const getPaymentMethods = async (req, res) => {
         name: "Chapa",
         icon: "💳",
         description: "Pay with Card, Telebirr, CBE Birr via Chapa",
-        enabled: true,
-      },
-      {
-        id: "telebirr",
-        name: "Telebirr",
-        icon: "📱",
-        description: "Pay directly with Telebirr",
-        enabled: true,
-      },
-      {
-        id: "cbebirr",
-        name: "CBE Birr",
-        icon: "🏦",
-        description: "Pay with CBE Birr account",
         enabled: true,
       },
     ];
