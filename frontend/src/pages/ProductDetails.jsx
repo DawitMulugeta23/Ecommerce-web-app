@@ -1,11 +1,12 @@
 // client/src/pages/ProductDetails.jsx
-import { ShoppingCart, Trash2 } from "lucide-react";
+import { Heart, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import RelatedProducts from "../components/RelatedProducts";
 import { addToCartBackend, addToCartLocal } from "../features/cart/cartSlice";
+import { toggleLike } from "../features/products/productSlice";
 import API from "../services/api";
 
 const ProductDetail = () => {
@@ -16,22 +17,28 @@ const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         const { data } = await API.get(`/products/${id}`);
         setProduct(data);
+        setLikeCount(data.likeCount || 0);
+        if (user) {
+          setIsLiked(data.likes?.includes(user.id) || false);
+        }
       } catch (err) {
-        console.error("Failed to fetch product", err);
         toast.error("Product not found");
+        console.error(err.message);
         navigate("/");
       } finally {
         setLoading(false);
       }
     };
     fetchProduct();
-  }, [id, navigate]);
+  }, [id, navigate, user]);
 
   const handleAddToCart = () => {
     if (!product || product.countInStock === 0) {
@@ -62,6 +69,24 @@ const ProductDetail = () => {
     }
   };
 
+  const handleLike = async () => {
+    if (!user) {
+      toast.error("Please login to like products");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const result = await dispatch(toggleLike(product._id)).unwrap();
+      setIsLiked(result.liked);
+      setLikeCount(result.likeCount);
+      toast.success(result.liked ? "Product liked!" : "Product unliked!");
+    } catch (err) {
+      toast.error("Failed to like product");
+      console.error(err.message);
+    }
+  };
+
   const handleBuyNow = () => {
     if (!product || product.countInStock === 0) {
       toast.error("Product out of stock");
@@ -89,18 +114,44 @@ const ProductDetail = () => {
   const handleDelete = async () => {
     if (!user || user.role !== "admin") return;
 
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      try {
-        await API.delete(`/products/${id}`, {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-        toast.success("Product deleted successfully!");
-        navigate("/");
-      } catch (err) {
-        toast.error("Failed to delete product");
-        console.error(err.message);
-      }
-    }
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-3">
+          <p className="font-bold">Delete Product</p>
+          <p>Are you sure you want to delete "{product.name}"?</p>
+          <div className="flex gap-2 justify-end">
+            <button
+              className="px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300"
+              onClick={() => toast.dismiss(t.id)}
+            >
+              No
+            </button>
+            <button
+              className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              onClick={async () => {
+                toast.dismiss(t.id);
+                try {
+                  await API.delete(`/products/${id}`, {
+                    headers: { Authorization: `Bearer ${user.token}` },
+                  });
+                  toast.success("Product deleted successfully!");
+                  navigate("/");
+                } catch (err) {
+                  toast.error("Failed to delete product");
+                  console.error(err.message);
+                }
+              }}
+            >
+              Yes, Delete
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: Infinity,
+        position: "top-center",
+      },
+    );
   };
 
   const incrementQuantity = () => {
@@ -151,15 +202,33 @@ const ProductDetail = () => {
                 {product.category}
               </span>
 
-              {user && user.role === "admin" && (
+              <div className="flex items-center gap-4">
+                {/* Like Button with Count */}
                 <button
-                  onClick={handleDelete}
-                  className="flex items-center gap-2 bg-red-50 text-red-600 px-6 py-3 rounded-2xl font-bold hover:bg-red-600 hover:text-white transition-all"
+                  onClick={handleLike}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+                    isLiked
+                      ? "bg-red-50 text-red-600 dark:bg-red-900/20"
+                      : "bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                  }`}
                 >
-                  <Trash2 size={20} />
-                  Delete Product
+                  <Heart
+                    size={20}
+                    className={isLiked ? "fill-red-500 text-red-500" : ""}
+                  />
+                  <span className="font-bold">{likeCount}</span>
                 </button>
-              )}
+
+                {user && user.role === "admin" && (
+                  <button
+                    onClick={handleDelete}
+                    className="flex items-center gap-2 bg-red-50 text-red-600 px-6 py-3 rounded-2xl font-bold hover:bg-red-600 hover:text-white transition-all"
+                  >
+                    <Trash2 size={20} />
+                    Delete
+                  </button>
+                )}
+              </div>
             </div>
 
             <h1 className="text-5xl font-black text-gray-900 dark:text-white leading-tight">

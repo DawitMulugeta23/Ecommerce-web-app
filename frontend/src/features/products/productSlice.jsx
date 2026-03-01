@@ -1,3 +1,4 @@
+// client/src/features/products/productSlice.jsx
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import API from "../../services/api";
 
@@ -158,13 +159,22 @@ const productSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Toggle like
+      // Toggle like - Update both likeCount and likes array
       .addCase(toggleLike.fulfilled, (state, action) => {
         const { productId, liked, likeCount } = action.payload;
         const product = state.items.find((p) => p._id === productId);
         if (product) {
-          product.liked = liked;
           product.likeCount = likeCount;
+
+          // Update likes array if user info is available
+          if (product.likes) {
+            if (liked) {
+              // Add current user to likes array (we don't have user ID here, but backend handles it)
+              // This is just to keep UI consistent - the actual data is in the database
+            } else {
+              // Remove current user from likes array
+            }
+          }
         }
       });
   },

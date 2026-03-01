@@ -1,5 +1,6 @@
 // client/src/components/RelatedProducts.jsx
 import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 import { useSelector } from "react-redux";
 import API from "../services/api";
 import ProductCard from "./ProductCard";
@@ -22,16 +23,20 @@ const RelatedProducts = ({ currentProductId, category }) => {
 
         if (fromStore.length >= 4) {
           setRelatedProducts(fromStore);
-        } else {
-          // If not enough in store, fetch from API
-          const { data } = await API.get(`/products?category=${category}`);
-          const filtered = data
-            .filter((p) => p._id !== currentProductId)
-            .slice(0, 4);
-          setRelatedProducts(filtered);
+          setLoading(false);
+          return;
         }
+
+        // If not enough in store, fetch from API
+        const { data } = await API.get(`/products?category=${category}`);
+        const filtered = data
+          .filter((p) => p._id !== currentProductId)
+          .slice(0, 4);
+
+        setRelatedProducts(filtered);
       } catch (error) {
-        console.error("Failed to fetch related products:", error);
+        toast.error("Failed to load related products");
+        console.error(error.message);
       } finally {
         setLoading(false);
       }
@@ -42,8 +47,13 @@ const RelatedProducts = ({ currentProductId, category }) => {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600"></div>
+      <div className="mt-16 pt-8 border-t border-gray-200 dark:border-gray-800">
+        <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-8">
+          Related Products
+        </h2>
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600"></div>
+        </div>
       </div>
     );
   }

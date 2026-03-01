@@ -1,3 +1,4 @@
+// client/src/components/ProductCard.jsx
 import {
   CreditCard,
   Edit2,
@@ -13,8 +14,7 @@ import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { addToCartBackend, addToCartLocal } from "../features/cart/cartSlice";
-import { deleteProduct } from "../features/products/productSlice";
-import API from "../services/api";
+import { deleteProduct, toggleLike } from "../features/products/productSlice";
 
 const ProductCard = ({ product }) => {
   const dispatch = useDispatch();
@@ -44,17 +44,16 @@ const ProductCard = ({ product }) => {
 
     // Logged in user - save to database
     try {
-      const result = await dispatch(
+      // We don't need to store the result if we're not using it
+      await dispatch(
         addToCartBackend({
           productId: product._id,
           quantity: 1,
         }),
       ).unwrap();
 
-      console.log("Add to cart result:", result);
       toast.success(`${product.name} added to cart!`);
     } catch (err) {
-      console.error("Add to cart error:", err);
       toast.error(err?.message || "Failed to add to cart");
     }
   };
@@ -69,9 +68,10 @@ const ProductCard = ({ product }) => {
     }
 
     try {
-      const { data } = await API.post(`/products/${product._id}/like`);
-      setIsLiked(data.liked);
-      setLikeCount(data.likeCount);
+      const result = await dispatch(toggleLike(product._id)).unwrap();
+      setIsLiked(result.liked);
+      setLikeCount(result.likeCount);
+      toast.success(result.liked ? "Product liked!" : "Product unliked!");
     } catch (err) {
       toast.error("Failed to like product");
       console.error(err.message);
@@ -103,14 +103,41 @@ const ProductCard = ({ product }) => {
 
   const handleDelete = async (e) => {
     e.stopPropagation();
-    if (window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
-      try {
-        await dispatch(deleteProduct(product._id)).unwrap();
-        toast.success("Product deleted successfully!");
-      } catch (err) {
-        toast.error(err?.message || "Failed to delete product");
-      }
-    }
+
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-3">
+          <p className="font-bold">Delete Product</p>
+          <p>Are you sure you want to delete "{product.name}"?</p>
+          <div className="flex gap-2 justify-end">
+            <button
+              className="px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300"
+              onClick={() => toast.dismiss(t.id)}
+            >
+              No
+            </button>
+            <button
+              className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              onClick={async () => {
+                toast.dismiss(t.id);
+                try {
+                  await dispatch(deleteProduct(product._id)).unwrap();
+                  toast.success("Product deleted successfully!");
+                } catch (err) {
+                  toast.error(err?.message || "Failed to delete product");
+                }
+              }}
+            >
+              Yes, Delete
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: Infinity,
+        position: "top-center",
+      },
+    );
   };
 
   return (
@@ -144,9 +171,10 @@ const ProductCard = ({ product }) => {
             </div>
           )}
 
+          {/* Like Button - Always visible */}
           <button
             onClick={handleLike}
-            className="absolute top-4 right-4 p-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-full shadow-md z-10 flex items-center gap-1"
+            className="absolute top-4 right-4 p-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-full shadow-md z-10 flex items-center gap-1 hover:scale-110 transition-transform"
           >
             <Heart
               size={22}
@@ -156,11 +184,10 @@ const ProductCard = ({ product }) => {
                   : "text-gray-400 dark:text-gray-500"
               }
             />
-            {likeCount > 0 && (
-              <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
-                {likeCount}
-              </span>
-            )}
+            {/* Like Count - Always visible to everyone */}
+            <span className="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[20px]">
+              {likeCount > 0 ? likeCount : ""}
+            </span>
           </button>
         </div>
 
