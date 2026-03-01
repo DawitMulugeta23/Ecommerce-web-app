@@ -21,6 +21,7 @@ import Success from "./pages/Success";
 function App() {
   return (
     <ThemeProvider>
+      <title>Ecommerce</title>
       <Router>
         <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950 transition-colors duration-300">
           <Navbar />
