@@ -3,6 +3,7 @@ import { toast } from "react-hot-toast";
 import { useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 import API from "../services/api";
+import { ThemeContext } from "../context/ThemeContext";
 
 const PAYMENT_METHODS = [
   {
@@ -124,6 +125,7 @@ const Checkout = () => {
   };
 
   return (
+    <ThemeContext>
     <div className="max-w-4xl mx-auto p-6 md:p-10">
       <h1 className="text-4xl font-black text-gray-900 mb-8 text-center">
         Complete Your Order
@@ -265,6 +267,7 @@ const Checkout = () => {
         </div>
       </div>
     </div>
+  </ThemeContext>
   );
 };
 
