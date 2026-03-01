@@ -1,3 +1,4 @@
+// backend/models/Product.js (add these fields)
 import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema(
@@ -9,9 +10,12 @@ const productSchema = new mongoose.Schema(
     image: { type: String, required: true },
     category: { type: String, required: true },
     countInStock: { type: Number, required: true, default: 5 },
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // Who created the product
-    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Array of user IDs who liked
-    likeCount: { type: Number, default: 0 }, // Denormalized count for performance
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    likeCount: { type: Number, default: 0 },
+    // New fields for rating
+    rating: { type: Number, default: 0 },
+    numReviews: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

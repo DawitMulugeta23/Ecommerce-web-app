@@ -1,24 +1,28 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import bcrypt from "bcryptjs";
+import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: { type: String, default: 'user' },
-  profilePicture: { 
-    type: String, 
-    default: function() {
-      // የኢሜይሉን Hash በመጠቀም ከ Gravatar ምስል ይወስዳል
-      return `https://www.gravatar.com/avatar/${Buffer.from(this.email).toString('hex')}?d=identicon`;
-    }
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    role: { type: String, default: "user" },
+    profilePicture: {
+      type: String,
+      default: function () {
+        // Use a default avatar if email is not available
+        const email = this.email || "user@example.com";
+        return `https://www.gravatar.com/avatar/${Buffer.from(email).toString("hex")}?d=identicon`;
+      },
+    },
   },
-}, { timestamps: true });
+  { timestamps: true },
+);
 
 // 1. የ 'next' ስህተትን ለመፍታት በቀጥታ async function ተጠቀም
-userSchema.pre('save', async function () {
+userSchema.pre("save", async function () {
   // ፓስወርዱ ካልተቀየረ ስራውን አቁም
-  if (!this.isModified('password')) return;
+  if (!this.isModified("password")) return;
 
   try {
     const salt = await bcrypt.genSalt(10);
@@ -34,4 +38,4 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-export default mongoose.model('User', userSchema);
+export default mongoose.model("User", userSchema);

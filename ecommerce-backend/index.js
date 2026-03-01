@@ -9,6 +9,9 @@ import authRoutes from "./routes/authRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
+import commentRoutes from './routes/commentRoutes.js';
+import analyticsRoutes from "./routes/analyticsRoutes.js"
+
 const app = express();
 
 // Connect to Database
@@ -48,6 +51,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use('/api/comments', commentRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

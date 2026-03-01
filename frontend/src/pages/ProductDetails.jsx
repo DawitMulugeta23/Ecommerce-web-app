@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
+import CommentSection from "../components/CommentSection";
 import RelatedProducts from "../components/RelatedProducts";
 import { addToCartBackend, addToCartLocal } from "../features/cart/cartSlice";
 import { toggleLike } from "../features/products/productSlice";
@@ -28,6 +29,7 @@ const ProductDetail = () => {
     });
   }, [id]);
 
+  // Fetch product data
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -147,7 +149,7 @@ const ProductDetail = () => {
                   navigate("/");
                 } catch (err) {
                   toast.error("Failed to delete product");
-                  console.error(err.message);
+                  console.err(err.message);
                 }
               }}
             >
@@ -345,6 +347,28 @@ const ProductDetail = () => {
           <RelatedProducts
             currentProductId={product._id}
             category={product.category}
+          />
+        )}
+
+        {/* Comments Section */}
+        {product && (
+          <CommentSection
+            productId={product._id}
+            onCommentUpdate={() => {
+              // Refresh product data to update rating
+              const refreshProduct = async () => {
+                try {
+                  const { data } = await API.get(`/products/${id}`);
+                  setProduct(data);
+                  setLikeCount(data.likeCount || 0);
+                } catch (err) {
+                  toast.error("Failed to refresh product")
+                  console.error(err.message);
+                  
+                }
+              };
+              refreshProduct();
+            }}
           />
         )}
       </div>

@@ -6,6 +6,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { ThemeProvider } from "./context/ThemeContext";
 import About from "./pages/About";
 import AdminAddProduct from "./pages/AdminAddProduct";
+import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminEditProduct from "./pages/AdminEditProduct";
 import Cart from "./pages/Cart";
@@ -36,8 +37,14 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/cart" element={<Cart />} />
-
-              {/* Protected Routes (Logged in users only) */}
+              <Route
+                path="/admin/analytics"
+                element={
+                  <ProtectedRoute isAdmin={true}>
+                    <AdminAnalytics />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/my-orders"
                 element={
