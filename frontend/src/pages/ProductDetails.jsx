@@ -20,9 +20,18 @@ const ProductDetail = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
 
+  // Scroll to top when component mounts or when product ID changes
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }, [id]);
+
   useEffect(() => {
     const fetchProduct = async () => {
       try {
+        setLoading(true);
         const { data } = await API.get(`/products/${id}`);
         setProduct(data);
         setLikeCount(data.likeCount || 0);

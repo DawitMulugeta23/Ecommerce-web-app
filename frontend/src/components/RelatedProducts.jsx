@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 import ProductCard from "./ProductCard";
 
@@ -9,6 +10,7 @@ const RelatedProducts = ({ currentProductId, category }) => {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const { items } = useSelector((state) => state.products);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchRelatedProducts = async () => {
@@ -45,6 +47,19 @@ const RelatedProducts = ({ currentProductId, category }) => {
     fetchRelatedProducts();
   }, [category, currentProductId, items]);
 
+  const handleProductClick = (productId) => {
+    // Scroll to top smoothly before navigation
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+
+    // Small delay to allow scroll to complete before navigation
+    setTimeout(() => {
+      navigate(`/product/${productId}`);
+    }, 300);
+  };
+
   if (loading) {
     return (
       <div className="mt-16 pt-8 border-t border-gray-200 dark:border-gray-800">
@@ -69,7 +84,13 @@ const RelatedProducts = ({ currentProductId, category }) => {
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {relatedProducts.map((product) => (
-          <ProductCard key={product._id} product={product} />
+          <div
+            key={product._id}
+            onClick={() => handleProductClick(product._id)}
+            className="cursor-pointer"
+          >
+            <ProductCard product={product} />
+          </div>
         ))}
       </div>
     </div>
