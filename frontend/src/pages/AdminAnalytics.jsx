@@ -1,48 +1,50 @@
 // client/src/pages/AdminAnalytics.jsx (fixed version - removed unused user)
-import { useState, useEffect } from "react";
-import { toast } from "react-hot-toast";
-import API from "../services/api";
 import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  AreaChart,
-  Area
-} from "recharts";
-import {
-  TrendingUp,
-  TrendingDown,
-  Package,
+  AlertTriangle,
   DollarSign,
+  Heart,
+  Package,
   ShoppingBag,
   Star,
-  Heart,
-  AlertTriangle,
-  Clock,
-  Calendar,
-  Filter
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import API from "../services/api";
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = [
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#ec4899",
+];
 
 const AdminAnalytics = () => {
   // Removed unused 'user' variable
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
-  const [timeRange, setTimeRange] = useState('30days');
-  const [selectedChart, setSelectedChart] = useState('sales');
-  const [customXAxis, setCustomXAxis] = useState('product');
-  const [customYAxis, setCustomYAxis] = useState('revenue');
+  const [timeRange, setTimeRange] = useState("30days");
+  const [selectedChart, setSelectedChart] = useState("sales");
+  const [customXAxis, setCustomXAxis] = useState("product");
+  const [customYAxis, setCustomYAxis] = useState("revenue");
 
   useEffect(() => {
     fetchAnalytics();
@@ -51,7 +53,9 @@ const AdminAnalytics = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const { data } = await API.get(`/analytics/dashboard?timeRange=${timeRange}`);
+      const { data } = await API.get(
+        `/analytics/dashboard?timeRange=${timeRange}`,
+      );
       setData(data.data);
     } catch (err) {
       toast.error("Failed to load analytics");
@@ -93,20 +97,20 @@ const AdminAnalytics = () => {
 
           {/* Time Range Selector */}
           <div className="flex gap-2">
-            {['7days', '30days', '90days', 'year'].map((range) => (
+            {["7days", "30days", "90days", "year"].map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
                 className={`px-4 py-2 rounded-xl font-bold transition ${
                   timeRange === range
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? "bg-blue-600 text-white"
+                    : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 }`}
               >
-                {range === '7days' && '7 Days'}
-                {range === '30days' && '30 Days'}
-                {range === '90days' && '90 Days'}
-                {range === 'year' && 'Year'}
+                {range === "7days" && "7 Days"}
+                {range === "30days" && "30 Days"}
+                {range === "90days" && "90 Days"}
+                {range === "year" && "Year"}
               </button>
             ))}
           </div>
@@ -117,13 +121,18 @@ const AdminAnalytics = () => {
           <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Total Revenue</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                  Total Revenue
+                </p>
                 <p className="text-3xl font-black text-gray-900 dark:text-white">
                   {data.summary?.totalRevenue?.toLocaleString() || 0} ETB
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center">
-                <DollarSign className="text-green-600 dark:text-green-400" size={24} />
+                <DollarSign
+                  className="text-green-600 dark:text-green-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
@@ -131,13 +140,18 @@ const AdminAnalytics = () => {
           <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Total Orders</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                  Total Orders
+                </p>
                 <p className="text-3xl font-black text-gray-900 dark:text-white">
                   {data.summary?.totalOrders || 0}
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center">
-                <ShoppingBag className="text-blue-600 dark:text-blue-400" size={24} />
+                <ShoppingBag
+                  className="text-blue-600 dark:text-blue-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
@@ -145,13 +159,18 @@ const AdminAnalytics = () => {
           <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Average Order</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                  Average Order
+                </p>
                 <p className="text-3xl font-black text-gray-900 dark:text-white">
                   {data.summary?.averageOrderValue?.toFixed(2) || 0} ETB
                 </p>
               </div>
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center">
-                <TrendingUp className="text-purple-600 dark:text-purple-400" size={24} />
+                <TrendingUp
+                  className="text-purple-600 dark:text-purple-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
@@ -159,13 +178,18 @@ const AdminAnalytics = () => {
           <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Total Products</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                  Total Products
+                </p>
                 <p className="text-3xl font-black text-gray-900 dark:text-white">
                   {data.summary?.totalProducts || 0}
                 </p>
               </div>
               <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center">
-                <Package className="text-orange-600 dark:text-orange-400" size={24} />
+                <Package
+                  className="text-orange-600 dark:text-orange-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
@@ -173,7 +197,9 @@ const AdminAnalytics = () => {
 
         {/* Custom Chart Configuration */}
         <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 mb-8">
-          <h2 className="text-xl font-bold mb-4 dark:text-white">Custom Chart Configuration</h2>
+          <h2 className="text-xl font-bold mb-4 dark:text-white">
+            Custom Chart Configuration
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
@@ -228,26 +254,40 @@ const AdminAnalytics = () => {
         {/* Main Chart Area */}
         <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 mb-8">
           <h2 className="text-xl font-bold mb-6 dark:text-white">
-            {selectedChart === 'sales' && 'Daily Sales Trend'}
-            {selectedChart === 'category' && 'Category Performance'}
-            {selectedChart === 'demand' && 'Product Demand Analysis'}
-            {selectedChart === 'likes' && 'Likes Distribution'}
+            {selectedChart === "sales" && "Daily Sales Trend"}
+            {selectedChart === "category" && "Category Performance"}
+            {selectedChart === "demand" && "Product Demand Analysis"}
+            {selectedChart === "likes" && "Likes Distribution"}
           </h2>
 
           <ResponsiveContainer width="100%" height={400}>
-            {selectedChart === 'sales' && (
+            {selectedChart === "sales" && (
               <AreaChart data={data.dailySales || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="_id" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Area type="monotone" dataKey="totalSales" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} name="Revenue (ETB)" />
-                <Area type="monotone" dataKey="orderCount" stroke="#10b981" fill="#10b981" fillOpacity={0.3} name="Orders" />
+                <Area
+                  type="monotone"
+                  dataKey="totalSales"
+                  stroke="#3b82f6"
+                  fill="#3b82f6"
+                  fillOpacity={0.3}
+                  name="Revenue (ETB)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="orderCount"
+                  stroke="#10b981"
+                  fill="#10b981"
+                  fillOpacity={0.3}
+                  name="Orders"
+                />
               </AreaChart>
             )}
 
-            {selectedChart === 'category' && (
+            {selectedChart === "category" && (
               <BarChart data={data.categoryPerformance || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="category" />
@@ -255,12 +295,22 @@ const AdminAnalytics = () => {
                 <YAxis yAxisId="right" orientation="right" stroke="#10b981" />
                 <Tooltip />
                 <Legend />
-                <Bar yAxisId="left" dataKey="revenue" fill="#3b82f6" name="Revenue (ETB)" />
-                <Bar yAxisId="right" dataKey="totalSold" fill="#10b981" name="Units Sold" />
+                <Bar
+                  yAxisId="left"
+                  dataKey="revenue"
+                  fill="#3b82f6"
+                  name="Revenue (ETB)"
+                />
+                <Bar
+                  yAxisId="right"
+                  dataKey="totalSold"
+                  fill="#10b981"
+                  name="Units Sold"
+                />
               </BarChart>
             )}
 
-            {selectedChart === 'demand' && (
+            {selectedChart === "demand" && (
               <BarChart data={data.highDemandProducts || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="productName" />
@@ -268,12 +318,22 @@ const AdminAnalytics = () => {
                 <YAxis yAxisId="right" orientation="right" stroke="#f59e0b" />
                 <Tooltip />
                 <Legend />
-                <Bar yAxisId="left" dataKey="totalSold" fill="#3b82f6" name="Units Sold" />
-                <Bar yAxisId="right" dataKey="revenue" fill="#f59e0b" name="Revenue" />
+                <Bar
+                  yAxisId="left"
+                  dataKey="totalSold"
+                  fill="#3b82f6"
+                  name="Units Sold"
+                />
+                <Bar
+                  yAxisId="right"
+                  dataKey="revenue"
+                  fill="#f59e0b"
+                  name="Revenue"
+                />
               </BarChart>
             )}
 
-            {selectedChart === 'likes' && (
+            {selectedChart === "likes" && (
               <PieChart>
                 <Pie
                   data={data.topRatedProducts?.slice(0, 5) || []}
@@ -284,9 +344,14 @@ const AdminAnalytics = () => {
                   outerRadius={150}
                   label
                 >
-                  {(data.topRatedProducts?.slice(0, 5) || []).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
+                  {(data.topRatedProducts?.slice(0, 5) || []).map(
+                    (entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ),
+                  )}
                 </Pie>
                 <Tooltip />
                 <Legend />
@@ -305,9 +370,14 @@ const AdminAnalytics = () => {
             </h3>
             <div className="space-y-4">
               {data.highDemandProducts?.map((product) => (
-                <div key={product._id} className="flex items-center justify-between">
+                <div
+                  key={product._id}
+                  className="flex items-center justify-between"
+                >
                   <div>
-                    <p className="font-bold dark:text-white">{product.productName}</p>
+                    <p className="font-bold dark:text-white">
+                      {product.productName}
+                    </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {product.totalSold} units sold
                     </p>
@@ -317,8 +387,11 @@ const AdminAnalytics = () => {
                   </span>
                 </div>
               ))}
-              {(!data.highDemandProducts || data.highDemandProducts.length === 0) && (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-4">No high demand products</p>
+              {(!data.highDemandProducts ||
+                data.highDemandProducts.length === 0) && (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                  No high demand products
+                </p>
               )}
             </div>
           </div>
@@ -331,24 +404,32 @@ const AdminAnalytics = () => {
             </h3>
             <div className="space-y-4">
               {data.lowStockProducts?.map((product) => (
-                <div key={product._id} className="flex items-center justify-between">
+                <div
+                  key={product._id}
+                  className="flex items-center justify-between"
+                >
                   <div>
                     <p className="font-bold dark:text-white">{product.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       Category: {product.category}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                    product.countInStock <= 3 
-                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                  }`}>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-bold ${
+                      product.countInStock <= 3
+                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                    }`}
+                  >
                     {product.countInStock} left
                   </span>
                 </div>
               ))}
-              {(!data.lowStockProducts || data.lowStockProducts.length === 0) && (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-4">No low stock products</p>
+              {(!data.lowStockProducts ||
+                data.lowStockProducts.length === 0) && (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                  No low stock products
+                </p>
               )}
             </div>
           </div>
@@ -361,7 +442,10 @@ const AdminAnalytics = () => {
             </h3>
             <div className="space-y-4">
               {data.notSellingProducts?.map((product) => (
-                <div key={product._id} className="flex items-center justify-between">
+                <div
+                  key={product._id}
+                  className="flex items-center justify-between"
+                >
                   <div>
                     <p className="font-bold dark:text-white">{product.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -373,8 +457,11 @@ const AdminAnalytics = () => {
                   </span>
                 </div>
               ))}
-              {(!data.notSellingProducts || data.notSellingProducts.length === 0) && (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-4">All products are selling</p>
+              {(!data.notSellingProducts ||
+                data.notSellingProducts.length === 0) && (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                  All products are selling
+                </p>
               )}
             </div>
           </div>
@@ -397,8 +484,8 @@ const AdminAnalytics = () => {
                         size={16}
                         className={`${
                           star <= Math.round(product.rating || 0)
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300 dark:text-gray-600'
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-gray-300 dark:text-gray-600"
                         }`}
                       />
                     ))}
@@ -407,12 +494,16 @@ const AdminAnalytics = () => {
                     {product.numReviews || 0} reviews
                   </p>
                 </div>
-                <p className="font-bold text-sm dark:text-white truncate">{product.name}</p>
+                <p className="font-bold text-sm dark:text-white truncate">
+                  {product.name}
+                </p>
                 <p className="text-blue-600 font-bold">{product.price} ETB</p>
               </div>
             ))}
             {(!data.topRatedProducts || data.topRatedProducts.length === 0) && (
-              <p className="text-gray-500 dark:text-gray-400 col-span-5 text-center py-4">No rated products yet</p>
+              <p className="text-gray-500 dark:text-gray-400 col-span-5 text-center py-4">
+                No rated products yet
+              </p>
             )}
           </div>
         </div>
@@ -428,19 +519,25 @@ const AdminAnalytics = () => {
               <p className="text-3xl font-black text-gray-900 dark:text-white">
                 {data.likeDistribution?.totalLikes || 0}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Likes</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Total Likes
+              </p>
             </div>
             <div className="text-center">
               <p className="text-3xl font-black text-gray-900 dark:text-white">
                 {data.likeDistribution?.avgLikes?.toFixed(1) || 0}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Average Likes per Product</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Average Likes per Product
+              </p>
             </div>
             <div className="text-center">
               <p className="text-3xl font-black text-gray-900 dark:text-white">
                 {data.likeDistribution?.productsWithLikes || 0}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Products with Likes</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Products with Likes
+              </p>
             </div>
           </div>
         </div>

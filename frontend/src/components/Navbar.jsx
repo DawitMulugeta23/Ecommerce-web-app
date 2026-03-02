@@ -10,10 +10,11 @@ import {
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
+import logos from "../../public/Most-Successful-Ecommerce-Categories.jpg";
 import { useTheme } from "../context/ThemeContext";
 import { logout } from "../features/auth/authSlice";
 import { clearCart, fetchCart } from "../features/cart/cartSlice";
-
+import "./logo.css";
 const Navbar = () => {
   const { user } = useSelector((state) => state.auth);
   const { items } = useSelector((state) => state.cart);
@@ -55,28 +56,43 @@ const Navbar = () => {
           >
             {isOpen ? <X /> : <Menu />}
           </button>
-          <Link
-            to="/"
-            className="text-2xl font-black text-blue-600 tracking-tighter"
-          >
-            MY<span className="text-gray-800 dark:text-white">STORE</span>
-          </Link>
+          <div className="mainP md:flex">
+            <Link
+              to="/"
+              className="text-2xl font-black text-blue-600 tracking-tighter"
+            >
+              {" "}
+              <img className="logo-img" src={logos} alt="" />
+              MY<span className="text-gray-800 dark:text-white">STORE</span>
+            </Link>
+          </div>
         </div>
 
-        {/* Desktop Links */}
+        {/* Desktop Links - Products and Contact now visible only when logged in */}
         <div className="hidden md:flex items-center gap-8 font-bold text-gray-600 dark:text-gray-300">
-          <Link to="/" className="hover:text-blue-600 transition">
-            Home
-          </Link>
-          <Link to="/products" className="hover:text-blue-600 transition">
-            Products
-          </Link>
-          <Link to="/contact" className="hover:text-blue-600 transition">
-            Contact
-          </Link>
+          {user && (
+            <Link to="/" className="hover:text-blue-600 transition">
+              Home
+            </Link>
+          )}
+          {/* Products - only visible when user is logged in */}
+          {user && (
+            <Link to="/products" className="hover:text-blue-600 transition">
+              Products
+            </Link>
+          )}
+
+          {/* My Orders - only visible when user is logged in (already had this condition) */}
           {user && (
             <Link to="/my-orders" className="hover:text-blue-600 transition">
               My Orders
+            </Link>
+          )}
+
+          {/* Contact - only visible when user is logged in */}
+          {user && (
+            <Link to="/contact" className="hover:text-blue-600 transition">
+              Contact
             </Link>
           )}
         </div>
@@ -202,7 +218,7 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Updated with same visibility rules */}
       {isOpen && (
         <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 py-4 px-4">
           <Link
@@ -212,20 +228,30 @@ const Navbar = () => {
           >
             Home
           </Link>
-          <Link
-            to="/products"
-            className="block py-2 font-bold dark:text-white"
-            onClick={() => setIsOpen(false)}
-          >
-            Products
-          </Link>
-          <Link
-            to="/contact"
-            className="block py-2 font-bold dark:text-white"
-            onClick={() => setIsOpen(false)}
-          >
-            Contact
-          </Link>
+
+          {/* Products in mobile menu - only when logged in */}
+          {user && (
+            <Link
+              to="/products"
+              className="block py-2 font-bold dark:text-white"
+              onClick={() => setIsOpen(false)}
+            >
+              Products
+            </Link>
+          )}
+
+          {/* Contact in mobile menu - only when logged in */}
+          {user && (
+            <Link
+              to="/contact"
+              className="block py-2 font-bold dark:text-white"
+              onClick={() => setIsOpen(false)}
+            >
+              Contact
+            </Link>
+          )}
+
+          {/* My Orders in mobile menu - only when logged in */}
           {user && (
             <Link
               to="/my-orders"
@@ -235,7 +261,8 @@ const Navbar = () => {
               My Orders
             </Link>
           )}
-          {/* Cart link in mobile menu with count */}
+
+          {/* Cart link in mobile menu with count - always visible */}
           <Link
             to="/cart"
             className="block py-2 font-bold dark:text-white flex items-center justify-between"
