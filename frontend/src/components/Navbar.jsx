@@ -15,6 +15,7 @@ import { useTheme } from "../context/ThemeContext";
 import { logout } from "../features/auth/authSlice";
 import { clearCart, fetchCart } from "../features/cart/cartSlice";
 import "./logo.css";
+
 const Navbar = () => {
   const { user } = useSelector((state) => state.auth);
   const { items } = useSelector((state) => state.cart);
@@ -56,16 +57,18 @@ const Navbar = () => {
           >
             {isOpen ? <X /> : <Menu />}
           </button>
-          <div className="mainP md:flex">
-            <Link
-              to="/"
-              className="text-2xl font-black text-blue-600 tracking-tighter"
-            >
-              {" "}
-              <img className="logo-img" src={logos} alt="" />
+
+          {/* 🔥 FIXED: Logo and text in flex row */}
+          <Link to="/" className="flex items-center gap-2">
+            <img
+              className="w-10 h-10 rounded-full object-cover"
+              src={logos}
+              alt="MYSTORE"
+            />
+            <span className="text-2xl font-black text-blue-600 tracking-tighter">
               MY<span className="text-gray-800 dark:text-white">STORE</span>
-            </Link>
-          </div>
+            </span>
+          </Link>
         </div>
 
         {/* Desktop Links - Products and Contact now visible only when logged in */}

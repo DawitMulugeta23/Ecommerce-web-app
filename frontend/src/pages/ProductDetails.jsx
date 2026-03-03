@@ -7,7 +7,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import CommentSection from "../components/CommentSection";
 import RelatedProducts from "../components/RelatedProducts";
 import { addToCartBackend, addToCartLocal } from "../features/cart/cartSlice";
-import { toggleLike } from "../features/products/productSlice";
+import { deleteProduct, toggleLike } from "../features/products/productSlice";
 import API from "../services/api";
 
 const ProductDetail = () => {
@@ -72,7 +72,6 @@ const ProductDetail = () => {
           toast.error(err.message || "Failed to add to cart");
         });
     } else {
-      // For local cart, we need to add multiple quantities
       for (let i = 0; i < quantity; i++) {
         dispatch(addToCartLocal(product));
       }
@@ -105,7 +104,6 @@ const ProductDetail = () => {
     }
 
     if (!user) {
-      // Add to cart and redirect to login
       for (let i = 0; i < quantity; i++) {
         dispatch(addToCartLocal(product));
       }
@@ -122,35 +120,51 @@ const ProductDetail = () => {
     }
   };
 
-  // client/src/pages/ProductDetails.jsx - Fixed line 180
-const handleDelete = async () => {
+  // ✅ FIXED: Delete product function
+  const handleDelete = async () => {
     if (!user || user.role !== "admin") return;
 
     toast(
       (t) => (
-        <div className="flex flex-col gap-3">
-          <p className="font-bold">Delete Product</p>
-          <p>Are you sure you want to delete "{product.name}"?</p>
-          <div className="flex gap-2 justify-end">
+        <div className="flex flex-col gap-3 bg-white dark:bg-gray-800 p-4 rounded-xl">
+          <p className="font-bold text-red-600 dark:text-red-400">
+            Delete Product
+          </p>
+          <p className="dark:text-white">
+            Are you sure you want to delete "{product.name}"?
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            This action cannot be undone.
+          </p>
+          <div className="flex gap-2 justify-end mt-2">
             <button
-              className="px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300"
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 font-bold"
               onClick={() => toast.dismiss(t.id)}
             >
-              No
+              Cancel
             </button>
             <button
-              className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold"
               onClick={async () => {
                 toast.dismiss(t.id);
                 try {
-                  await API.delete(`/products/${id}`, {
-                    headers: { Authorization: `Bearer ${user.token}` },
-                  });
-                  toast.success("Product deleted successfully!");
-                  navigate("/");
+                  const loadingToast = toast.loading("Deleting product...");
+                  const result = await dispatch(
+                    deleteProduct(product._id),
+                  ).unwrap();
+                  toast.dismiss(loadingToast);
+
+                  if (result) {
+                    toast.success(`"${product.name}" deleted successfully!`);
+                    navigate("/");
+                  }
                 } catch (err) {
-                  toast.error("Failed to delete product");
-                  console.error(err.message); // Fixed: was console.err
+                  console.error("Delete error:", err);
+                  toast.error(
+                    err?.message ||
+                      err?.response?.data?.message ||
+                      "Failed to delete product!",
+                  );
                 }
               }}
             >
@@ -165,25 +179,6 @@ const handleDelete = async () => {
       },
     );
   };
-  {product && (
-    <CommentSection
-      productId={product._id}
-      onCommentUpdate={() => {
-        // Refresh product data to update rating
-        const refreshProduct = async () => {
-          try {
-            const { data } = await API.get(`/products/${id}`);
-            setProduct(data);
-            setLikeCount(data.likeCount || 0);
-          } catch (err) {
-            toast.error("Failed to refresh product");
-            console.error(err.message); // Fixed: was console.err
-          }
-        };
-        refreshProduct();
-      }}
-    />
-  )}
 
   const incrementQuantity = () => {
     if (product && quantity < product.countInStock) {
@@ -208,13 +203,15 @@ const handleDelete = async () => {
   if (!product) {
     return (
       <div className="text-center py-20">
-        <h2 className="text-2xl font-bold text-gray-800">Product not found</h2>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+          Product not found
+        </h2>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 py-12">
+    <div className="min-h-screen bg-white dark:bg-gray-950 py-12 transition-colors duration-300">
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row gap-12">
           {/* Image Section */}
@@ -229,7 +226,7 @@ const handleDelete = async () => {
           {/* Info Section */}
           <div className="md:w-1/2 space-y-6">
             <div className="flex justify-between items-start">
-              <span className="bg-blue-100 text-blue-600 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest">
+              <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest">
                 {product.category}
               </span>
 
@@ -239,8 +236,8 @@ const handleDelete = async () => {
                   onClick={handleLike}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
                     isLiked
-                      ? "bg-red-50 text-red-600 dark:bg-red-900/20"
-                      : "bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                      ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
+                      : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
                   }`}
                 >
                   <Heart
@@ -250,10 +247,11 @@ const handleDelete = async () => {
                   <span className="font-bold">{likeCount}</span>
                 </button>
 
+                {/* ✅ Admin delete button */}
                 {user && user.role === "admin" && (
                   <button
                     onClick={handleDelete}
-                    className="flex items-center gap-2 bg-red-50 text-red-600 px-6 py-3 rounded-2xl font-bold hover:bg-red-600 hover:text-white transition-all"
+                    className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-6 py-3 rounded-2xl font-bold hover:bg-red-600 dark:hover:bg-red-700 hover:text-white transition-all"
                   >
                     <Trash2 size={20} />
                     Delete
@@ -266,7 +264,7 @@ const handleDelete = async () => {
               {product.name}
             </h1>
 
-            <p className="text-4xl text-blue-600 font-black tracking-tight">
+            <p className="text-4xl text-blue-600 dark:text-blue-400 font-black tracking-tight">
               {product.price} <span className="text-lg text-gray-400">ETB</span>
             </p>
 
@@ -308,7 +306,7 @@ const handleDelete = async () => {
                     <button
                       onClick={decrementQuantity}
                       disabled={quantity <= 1}
-                      className="px-4 py-2 text-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 rounded-l-lg disabled:opacity-50"
+                      className="px-4 py-2 text-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 rounded-l-lg disabled:opacity-50 text-gray-900 dark:text-white"
                     >
                       -
                     </button>
@@ -318,12 +316,12 @@ const handleDelete = async () => {
                     <button
                       onClick={incrementQuantity}
                       disabled={quantity >= product.countInStock}
-                      className="px-4 py-2 text-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 rounded-r-lg disabled:opacity-50"
+                      className="px-4 py-2 text-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 rounded-r-lg disabled:opacity-50 text-gray-900 dark:text-white"
                     >
                       +
                     </button>
                   </div>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
                     Max: {product.countInStock}
                   </span>
                 </div>
@@ -375,16 +373,14 @@ const handleDelete = async () => {
           <CommentSection
             productId={product._id}
             onCommentUpdate={() => {
-              // Refresh product data to update rating
               const refreshProduct = async () => {
                 try {
                   const { data } = await API.get(`/products/${id}`);
                   setProduct(data);
                   setLikeCount(data.likeCount || 0);
                 } catch (err) {
-                  toast.error("Failed to refresh product")
+                  toast.error("Failed to refresh product");
                   console.error(err.message);
-                  
                 }
               };
               refreshProduct();

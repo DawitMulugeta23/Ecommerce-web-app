@@ -16,7 +16,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { addToCartBackend, addToCartLocal } from "../features/cart/cartSlice";
 import { deleteProduct, toggleLike } from "../features/products/productSlice";
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, onDelete }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
@@ -28,12 +28,11 @@ const ProductCard = ({ product }) => {
   const [likeCount, setLikeCount] = useState(product.likeCount || 0);
 
   const handleCardClick = () => {
-    // Navigate to product detail page
     navigate(`/product/${product._id}`);
   };
 
   const handleAddToCart = async (e) => {
-    e.stopPropagation(); // Prevent card click when clicking add to cart
+    e.stopPropagation();
 
     if (product.countInStock <= 0) {
       toast.error("Product out of stock!");
@@ -41,13 +40,11 @@ const ProductCard = ({ product }) => {
     }
 
     if (!user) {
-      // Guest user - save to localStorage
       dispatch(addToCartLocal(product));
       toast.success(`${product.name} added to cart!`);
       return;
     }
 
-    // Logged in user - save to database
     try {
       await dispatch(
         addToCartBackend({
@@ -63,7 +60,7 @@ const ProductCard = ({ product }) => {
   };
 
   const handleLike = async (e) => {
-    e.stopPropagation(); // Prevent card click when clicking like button
+    e.stopPropagation();
 
     if (!user) {
       toast.error("Please login to like products");
@@ -83,7 +80,7 @@ const ProductCard = ({ product }) => {
   };
 
   const handleBuyNow = (e) => {
-    e.stopPropagation(); // Prevent card click when clicking buy now
+    e.stopPropagation();
 
     if (product.countInStock <= 0) {
       toast.error("Product out of stock!");
@@ -105,30 +102,52 @@ const ProductCard = ({ product }) => {
     }
   };
 
+  // ✅ FIXED: Delete product function
   const handleDelete = async (e) => {
-    e.stopPropagation(); // Prevent card click when clicking delete
+    e.stopPropagation();
 
     toast(
       (t) => (
-        <div className="flex flex-col gap-3">
-          <p className="font-bold">Delete Product</p>
-          <p>Are you sure you want to delete "{product.name}"?</p>
-          <div className="flex gap-2 justify-end">
+        <div className="flex flex-col gap-3 bg-white dark:bg-gray-800 p-4 rounded-xl">
+          <p className="font-bold text-red-600 dark:text-red-400">
+            Delete Product
+          </p>
+          <p className="dark:text-white">
+            Are you sure you want to delete "{product.name}"?
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            This action cannot be undone.
+          </p>
+          <div className="flex gap-2 justify-end mt-2">
             <button
-              className="px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300"
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 font-bold"
               onClick={() => toast.dismiss(t.id)}
             >
-              No
+              Cancel
             </button>
             <button
-              className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold"
               onClick={async () => {
                 toast.dismiss(t.id);
                 try {
-                  await dispatch(deleteProduct(product._id)).unwrap();
-                  toast.success("Product deleted successfully!");
+                  const loadingToast = toast.loading("Deleting product...");
+                  const result = await dispatch(
+                    deleteProduct(product._id),
+                  ).unwrap();
+                  toast.dismiss(loadingToast);
+
+                  if (result) {
+                    toast.success(`"${product.name}" deleted successfully!`);
+                    // Call onDelete callback if provided
+                    if (onDelete) onDelete(product._id);
+                  }
                 } catch (err) {
-                  toast.error(err?.message || "Failed to delete product");
+                  console.error("Delete error:", err);
+                  toast.error(
+                    err?.message ||
+                      err?.response?.data?.message ||
+                      "Failed to delete product!",
+                  );
                 }
               }}
             >
@@ -145,7 +164,7 @@ const ProductCard = ({ product }) => {
   };
 
   const handleImageClick = (e) => {
-    e.stopPropagation(); // Prevent double navigation
+    e.stopPropagation();
     setIsModalOpen(true);
   };
 
@@ -165,25 +184,28 @@ const ProductCard = ({ product }) => {
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
 
+          {/* ✅ Admin buttons always visible for admin users */}
           {user && user.role === "admin" && (
             <div className="absolute top-4 left-4 flex gap-2 z-20">
               <Link
                 to={`/admin/edit-product/${product._id}`}
                 onClick={(e) => e.stopPropagation()}
                 className="p-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-transform hover:scale-110"
+                title="Edit Product"
               >
                 <Edit2 size={18} />
               </Link>
               <button
                 onClick={handleDelete}
                 className="p-3 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-transform hover:scale-110"
+                title="Delete Product"
               >
                 <Trash2 size={18} />
               </button>
             </div>
           )}
 
-          {/* Like Button - Always visible */}
+          {/* Like Button */}
           <button
             onClick={handleLike}
             className="absolute top-4 right-4 p-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-full shadow-md z-10 flex items-center gap-1 hover:scale-110 transition-transform"
@@ -196,7 +218,6 @@ const ProductCard = ({ product }) => {
                   : "text-gray-400 dark:text-gray-500"
               }
             />
-            {/* Like Count - Always visible to everyone */}
             <span className="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[20px]">
               {likeCount > 0 ? likeCount : ""}
             </span>
@@ -263,6 +284,7 @@ const ProductCard = ({ product }) => {
         </div>
       </div>
 
+      {/* Image Modal */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4"

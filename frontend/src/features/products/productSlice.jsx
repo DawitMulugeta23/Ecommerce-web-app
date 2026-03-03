@@ -50,7 +50,6 @@ export const updateProduct = createAsyncThunk(
     }
   },
 );
-
 export const deleteProduct = createAsyncThunk(
   "products/deleteProduct",
   async (id, { getState, rejectWithValue }) => {
@@ -62,7 +61,7 @@ export const deleteProduct = createAsyncThunk(
         },
       };
       await API.delete(`/products/${id}`, config);
-      return id;
+      return id; // Return the id of deleted product
     } catch (err) {
       return rejectWithValue(
         err.response?.data || { message: "Failed to delete product" },

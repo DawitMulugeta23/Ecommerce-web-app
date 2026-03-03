@@ -38,10 +38,6 @@ app.use(
   }),
 );
 
-// ⚠️ DO NOT ADD: app.options('*', cors()) - This causes the error!
-// Express + cors middleware handles OPTIONS automatically
-
-// Other middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));

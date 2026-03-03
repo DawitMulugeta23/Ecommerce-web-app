@@ -114,9 +114,6 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-// @desc    Like/Unlike a product
-// @route   POST /api/products/:id/like
-// @access  Private
 export const toggleLike = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -152,9 +149,7 @@ export const toggleLike = async (req, res) => {
   }
 };
 
-// @desc    Get products created by specific user
-// @route   GET /api/products/user/:userId
-// @access  Private/Admin
+
 export const getProductsByUser = async (req, res) => {
   try {
     const products = await Product.find({ user: req.params.userId })
