@@ -1,5 +1,5 @@
 // backend/controllers/commentController.js
-import mongoose from "mongoose"; // Add this import
+import mongoose from "mongoose";
 import Comment from "../models/Comment.js";
 import Product from "../models/Product.js";
 
@@ -80,8 +80,7 @@ export const addComment = async (req, res) => {
 
     if (existingComment) {
       return res.status(400).json({
-        message:
-          "You have already commented on this product. You can edit your existing comment.",
+        message: "You have already commented on this product.",
       });
     }
 
@@ -107,47 +106,6 @@ export const addComment = async (req, res) => {
   }
 };
 
-// @desc    Update a comment
-// @route   PUT /api/comments/:id
-// @access  Private
-export const updateComment = async (req, res) => {
-  try {
-    const { rating, comment } = req.body;
-    const commentId = req.params.id;
-
-    const existingComment = await Comment.findById(commentId);
-
-    if (!existingComment) {
-      return res.status(404).json({ message: "Comment not found!" });
-    }
-
-    // Check if user owns the comment or is admin
-    if (
-      existingComment.user.toString() !== req.user._id.toString() &&
-      req.user.role !== "admin"
-    ) {
-      return res
-        .status(403)
-        .json({ message: "Not authorized to update this comment!" });
-    }
-
-    existingComment.rating = rating || existingComment.rating;
-    existingComment.comment = comment || existingComment.comment;
-    await existingComment.save();
-
-    await existingComment.populate("user", "name email profilePicture");
-
-    res.json({
-      success: true,
-      comment: existingComment,
-      message: "Comment updated successfully!",
-    });
-  } catch (error) {
-    console.error("Error in updateComment:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
 // @desc    Delete a comment
 // @route   DELETE /api/comments/:id
 // @access  Private
@@ -161,10 +119,10 @@ export const deleteComment = async (req, res) => {
       return res.status(404).json({ message: "Comment not found!" });
     }
 
-    // Check if user owns the comment or is admin
+    // Check if user is admin or comment owner
     if (
-      comment.user.toString() !== req.user._id.toString() &&
-      req.user.role !== "admin"
+      req.user.role !== "admin" &&
+      comment.user.toString() !== req.user._id.toString()
     ) {
       return res
         .status(403)
@@ -254,4 +212,15 @@ export const replyToComment = async (req, res) => {
     console.error("Error in replyToComment:", error);
     res.status(500).json({ message: error.message });
   }
+};
+
+// @desc    Update a comment - DISABLED
+// @route   PUT /api/comments/:id
+// @access  Private
+export const updateComment = async (req, res) => {
+  // Comment editing is disabled
+  return res.status(403).json({
+    message:
+      "Comment editing is not allowed. Please delete and create a new comment.",
+  });
 };

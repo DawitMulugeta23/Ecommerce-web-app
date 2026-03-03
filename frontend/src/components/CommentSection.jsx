@@ -1,12 +1,12 @@
 // client/src/components/CommentSection.jsx
-import { Edit2, Heart, Reply, Star, Trash2 } from "lucide-react";
+import { Heart, Reply, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 
-// Simple date formatter function (replaces date-fns)
+// Simple date formatter function
 const formatDate = (dateString) => {
   const date = new Date(dateString);
   const now = new Date();
@@ -41,9 +41,6 @@ const CommentSection = ({ productId, onCommentUpdate }) => {
   const [rating, setRating] = useState(5);
   const [replyTo, setReplyTo] = useState(null);
   const [replyText, setReplyText] = useState("");
-  const [editingComment, setEditingComment] = useState(null);
-  const [editText, setEditText] = useState("");
-  const [editRating, setEditRating] = useState(5);
   const [stats, setStats] = useState({
     ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
     totalComments: 0,
@@ -162,6 +159,17 @@ const CommentSection = ({ productId, onCommentUpdate }) => {
   };
 
   const handleDeleteComment = async (commentId) => {
+    // Check if user is admin or comment owner
+    const canDelete =
+      user &&
+      (user.role === "admin" ||
+        user._id === comments.find((c) => c._id === commentId)?.user?._id);
+
+    if (!canDelete) {
+      toast.error("You don't have permission to delete this comment");
+      return;
+    }
+
     toast(
       (t) => (
         <div className="flex flex-col gap-3">
@@ -184,8 +192,9 @@ const CommentSection = ({ productId, onCommentUpdate }) => {
                   fetchComments();
                   if (onCommentUpdate) onCommentUpdate();
                 } catch (err) {
-                  toast.error("Failed to delete comment");
-                  console.error(err.message);
+                  toast.error(
+                    err.response?.data?.message || "Failed to delete comment",
+                  );
                 }
               }}
             >
@@ -199,27 +208,6 @@ const CommentSection = ({ productId, onCommentUpdate }) => {
         position: "top-center",
       },
     );
-  };
-
-  const handleUpdateComment = async (commentId) => {
-    if (!editText.trim()) {
-      toast.error("Please write a comment");
-      return;
-    }
-
-    try {
-      await API.put(`/comments/${commentId}`, {
-        rating: editRating,
-        comment: editText,
-      });
-      toast.success("Comment updated!");
-      setEditingComment(null);
-      fetchComments();
-      if (onCommentUpdate) onCommentUpdate();
-    } catch (err) {
-      toast.error("Failed to update comment");
-      console.error(err.message);
-    }
   };
 
   const renderStars = (value, onChange, disabled = false) => {
@@ -368,190 +356,163 @@ const CommentSection = ({ productId, onCommentUpdate }) => {
             No reviews yet. Be the first to review this product!
           </p>
         ) : (
-          comments.map((comment) => (
-            <div
-              key={comment._id}
-              className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6"
-            >
-              {/* Comment Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={
-                      comment.user?.profilePicture ||
-                      `https://ui-avatars.com/api/?name=${comment.user?.name || "User"}&background=3b82f6&color=fff`
-                    }
-                    alt={comment.user?.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                    onError={(e) => {
-                      e.target.src = `https://ui-avatars.com/api/?name=${comment.user?.name || "User"}&background=3b82f6&color=fff`;
-                    }}
-                  />
-                  <div>
-                    <h4 className="font-bold dark:text-white">
-                      {comment.user?.name || "Anonymous"}
-                    </h4>
-                    <div className="flex items-center gap-2">
-                      <div className="flex">
-                        {renderStars(comment.rating || 0, () => {}, true)}
+          comments.map((comment) => {
+            // Check if current user is admin or comment owner
+            const canDelete =
+              user && (user.role === "admin" || user._id === comment.user?._id);
+
+            return (
+              <div
+                key={comment._id}
+                className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6"
+              >
+                {/* Comment Header - Always visible to all users */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    {/* User Avatar - Always visible */}
+                    <img
+                      src={
+                        comment.user?.profilePicture ||
+                        `https://ui-avatars.com/api/?name=${comment.user?.name || "User"}&background=3b82f6&color=fff`
+                      }
+                      alt={comment.user?.name}
+                      className="w-10 h-10 rounded-full object-cover"
+                      onError={(e) => {
+                        e.target.src = `https://ui-avatars.com/api/?name=${comment.user?.name || "User"}&background=3b82f6&color=fff`;
+                      }}
+                    />
+                    <div>
+                      {/* Username - Always visible to all users */}
+                      <h4 className="font-bold text-gray-900 dark:text-white">
+                        {comment.user?.name || "Anonymous User"}
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        {/* Star Rating - Always visible */}
+                        <div className="flex">
+                          {renderStars(comment.rating || 0, () => {}, true)}
+                        </div>
+                        {/* Date - Always visible */}
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {formatDate(comment.createdAt)}
+                        </span>
                       </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatDate(comment.createdAt)}
-                      </span>
                     </div>
                   </div>
-                </div>
 
-                {/* Edit/Delete buttons */}
-                {(user?._id === comment.user?._id ||
-                  user?.role === "admin") && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setEditingComment(comment._id);
-                        setEditText(comment.comment);
-                        setEditRating(comment.rating);
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition"
-                    >
-                      <Edit2 size={16} />
-                    </button>
+                  {/* Delete button - Only visible to comment owner or admin */}
+                  {canDelete && (
                     <button
                       onClick={() => handleDeleteComment(comment._id)}
                       className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                      title="Delete comment"
                     >
                       <Trash2 size={16} />
                     </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Comment Content */}
-              {editingComment === comment._id ? (
-                <div className="mb-4">
-                  <div className="mb-3">
-                    {renderStars(editRating, setEditRating)}
-                  </div>
-                  <textarea
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    rows="3"
-                    className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white mb-3"
-                  ></textarea>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleUpdateComment(comment._id)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => setEditingComment(null)}
-                      className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+                  )}
                 </div>
-              ) : (
+
+                {/* Comment Content - Always visible */}
                 <p className="text-gray-700 dark:text-gray-300 mb-4">
                   {comment.comment}
                 </p>
-              )}
 
-              {/* Like and Reply buttons */}
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => handleLikeComment(comment._id)}
-                  className={`flex items-center gap-1 text-sm ${
-                    comment.likes?.includes(user?._id)
-                      ? "text-red-600"
-                      : "text-gray-500 dark:text-gray-400 hover:text-red-600"
-                  } transition`}
-                >
-                  <Heart
-                    size={16}
-                    className={
-                      comment.likes?.includes(user?._id) ? "fill-red-600" : ""
+                {/* Like and Reply buttons - Always visible but require login to interact */}
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => handleLikeComment(comment._id)}
+                    className={`flex items-center gap-1 text-sm ${
+                      user && comment.likes?.includes(user._id)
+                        ? "text-red-600"
+                        : "text-gray-500 dark:text-gray-400 hover:text-red-600"
+                    } transition`}
+                  >
+                    <Heart
+                      size={16}
+                      className={
+                        user && comment.likes?.includes(user._id)
+                          ? "fill-red-600"
+                          : ""
+                      }
+                    />
+                    <span>{comment.likeCount || 0}</span>
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      setReplyTo(replyTo === comment._id ? null : comment._id)
                     }
-                  />
-                  <span>{comment.likeCount || 0}</span>
-                </button>
-
-                <button
-                  onClick={() =>
-                    setReplyTo(replyTo === comment._id ? null : comment._id)
-                  }
-                  className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 transition"
-                >
-                  <Reply size={16} />
-                  Reply
-                </button>
-              </div>
-
-              {/* Reply Form */}
-              {replyTo === comment._id && (
-                <div className="mt-4 pl-6 border-l-2 border-gray-200 dark:border-gray-700">
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Write your reply..."
-                    rows="2"
-                    className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white mb-2"
-                  ></textarea>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleReply(comment._id)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
-                    >
-                      Post Reply
-                    </button>
-                    <button
-                      onClick={() => setReplyTo(null)}
-                      className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+                    className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 transition"
+                  >
+                    <Reply size={16} />
+                    Reply
+                  </button>
                 </div>
-              )}
 
-              {/* Display Replies */}
-              {comment.replies && comment.replies.length > 0 && (
-                <div className="mt-4 pl-6 space-y-4">
-                  {comment.replies.map((reply, index) => (
-                    <div
-                      key={index}
-                      className="border-l-2 border-gray-200 dark:border-gray-700 pl-4"
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <img
-                          src={
-                            reply.user?.profilePicture ||
-                            `https://ui-avatars.com/api/?name=${reply.user?.name || "User"}&background=3b82f6&color=fff`
-                          }
-                          alt={reply.user?.name}
-                          className="w-6 h-6 rounded-full object-cover"
-                          onError={(e) => {
-                            e.target.src = `https://ui-avatars.com/api/?name=${reply.user?.name || "User"}&background=3b82f6&color=fff`;
-                          }}
-                        />
-                        <span className="font-bold text-sm dark:text-white">
-                          {reply.user?.name || "Anonymous"}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatDate(reply.createdAt)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        {reply.text}
-                      </p>
+                {/* Reply Form */}
+                {replyTo === comment._id && (
+                  <div className="mt-4 pl-6 border-l-2 border-gray-200 dark:border-gray-700">
+                    <textarea
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Write your reply..."
+                      rows="2"
+                      className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white mb-2"
+                    ></textarea>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleReply(comment._id)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
+                      >
+                        Post Reply
+                      </button>
+                      <button
+                        onClick={() => setReplyTo(null)}
+                        className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                      >
+                        Cancel
+                      </button>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))
+                  </div>
+                )}
+
+                {/* Display Replies - Always visible */}
+                {comment.replies && comment.replies.length > 0 && (
+                  <div className="mt-4 pl-6 space-y-4">
+                    {comment.replies.map((reply, index) => (
+                      <div
+                        key={index}
+                        className="border-l-2 border-gray-200 dark:border-gray-700 pl-4"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <img
+                            src={
+                              reply.user?.profilePicture ||
+                              `https://ui-avatars.com/api/?name=${reply.user?.name || "User"}&background=3b82f6&color=fff`
+                            }
+                            alt={reply.user?.name}
+                            className="w-6 h-6 rounded-full object-cover"
+                            onError={(e) => {
+                              e.target.src = `https://ui-avatars.com/api/?name=${reply.user?.name || "User"}&background=3b82f6&color=fff`;
+                            }}
+                          />
+                          {/* Reply Username - Always visible */}
+                          <span className="font-bold text-sm text-gray-900 dark:text-white">
+                            {reply.user?.name || "Anonymous User"}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatDate(reply.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          {reply.text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </div>

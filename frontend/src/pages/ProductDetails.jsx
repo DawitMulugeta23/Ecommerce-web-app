@@ -122,7 +122,8 @@ const ProductDetail = () => {
     }
   };
 
-  const handleDelete = async () => {
+  // client/src/pages/ProductDetails.jsx - Fixed line 180
+const handleDelete = async () => {
     if (!user || user.role !== "admin") return;
 
     toast(
@@ -149,7 +150,7 @@ const ProductDetail = () => {
                   navigate("/");
                 } catch (err) {
                   toast.error("Failed to delete product");
-                  console.err(err.message);
+                  console.error(err.message); // Fixed: was console.err
                 }
               }}
             >
@@ -164,6 +165,25 @@ const ProductDetail = () => {
       },
     );
   };
+  {product && (
+    <CommentSection
+      productId={product._id}
+      onCommentUpdate={() => {
+        // Refresh product data to update rating
+        const refreshProduct = async () => {
+          try {
+            const { data } = await API.get(`/products/${id}`);
+            setProduct(data);
+            setLikeCount(data.likeCount || 0);
+          } catch (err) {
+            toast.error("Failed to refresh product");
+            console.error(err.message); // Fixed: was console.err
+          }
+        };
+        refreshProduct();
+      }}
+    />
+  )}
 
   const incrementQuantity = () => {
     if (product && quantity < product.countInStock) {

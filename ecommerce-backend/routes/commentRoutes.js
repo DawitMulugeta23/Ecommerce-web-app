@@ -17,7 +17,7 @@ router.get("/product/:productId", getProductComments);
 
 // Protected routes
 router.post("/", protect, addComment);
-router.put("/:id", protect, updateComment);
+router.put("/:id", protect, updateComment); // This will now return 403 - editing disabled
 router.delete("/:id", protect, deleteComment);
 router.post("/:id/like", protect, toggleCommentLike);
 router.post("/:id/reply", protect, replyToComment);

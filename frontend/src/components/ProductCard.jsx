@@ -27,8 +27,13 @@ const ProductCard = ({ product }) => {
   );
   const [likeCount, setLikeCount] = useState(product.likeCount || 0);
 
+  const handleCardClick = () => {
+    // Navigate to product detail page
+    navigate(`/product/${product._id}`);
+  };
+
   const handleAddToCart = async (e) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent card click when clicking add to cart
 
     if (product.countInStock <= 0) {
       toast.error("Product out of stock!");
@@ -44,7 +49,6 @@ const ProductCard = ({ product }) => {
 
     // Logged in user - save to database
     try {
-      // We don't need to store the result if we're not using it
       await dispatch(
         addToCartBackend({
           productId: product._id,
@@ -59,7 +63,7 @@ const ProductCard = ({ product }) => {
   };
 
   const handleLike = async (e) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent card click when clicking like button
 
     if (!user) {
       toast.error("Please login to like products");
@@ -79,7 +83,7 @@ const ProductCard = ({ product }) => {
   };
 
   const handleBuyNow = (e) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent card click when clicking buy now
 
     if (product.countInStock <= 0) {
       toast.error("Product out of stock!");
@@ -102,7 +106,7 @@ const ProductCard = ({ product }) => {
   };
 
   const handleDelete = async (e) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent card click when clicking delete
 
     toast(
       (t) => (
@@ -140,12 +144,20 @@ const ProductCard = ({ product }) => {
     );
   };
 
+  const handleImageClick = (e) => {
+    e.stopPropagation(); // Prevent double navigation
+    setIsModalOpen(true);
+  };
+
   return (
     <>
-      <div className="group bg-white dark:bg-gray-900 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 dark:border-gray-800 flex flex-col h-full relative">
+      <div
+        className="group bg-white dark:bg-gray-900 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 dark:border-gray-800 flex flex-col h-full relative cursor-pointer"
+        onClick={handleCardClick}
+      >
         <div
-          className="relative h-80 md:h-96 w-full overflow-hidden cursor-zoom-in"
-          onClick={() => setIsModalOpen(true)}
+          className="relative h-80 md:h-96 w-full overflow-hidden"
+          onClick={handleImageClick}
         >
           <img
             src={product.image}
@@ -242,6 +254,7 @@ const ProductCard = ({ product }) => {
             </button>
             <Link
               to={`/product/${product._id}`}
+              onClick={(e) => e.stopPropagation()}
               className="flex-0.5 px-4 h-14 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-2xl font-bold flex items-center justify-center hover:bg-gray-800 dark:hover:bg-gray-700 hover:text-white transition"
             >
               <Eye size={20} />
@@ -255,13 +268,17 @@ const ProductCard = ({ product }) => {
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4"
           onClick={() => setIsModalOpen(false)}
         >
-          <button className="absolute top-10 right-10 text-white hover:text-red-500 transition-colors">
+          <button
+            className="absolute top-10 right-10 text-white hover:text-red-500 transition-colors"
+            onClick={() => setIsModalOpen(false)}
+          >
             <X size={40} />
           </button>
           <img
             src={product.image}
             alt={product.name}
             className="max-w-full max-h-[90vh] rounded-xl object-contain shadow-2xl animate-in zoom-in duration-300"
+            onClick={(e) => e.stopPropagation()}
           />
         </div>
       )}
