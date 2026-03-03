@@ -1,6 +1,5 @@
 // client/src/pages/AdminDashboard.jsx
 import {
-  BarChart,
   CreditCard,
   Edit,
   Eye,
@@ -27,6 +26,7 @@ const AdminDashboard = () => {
   const { items: products, loading: productsLoading } = useSelector(
     (state) => state.products,
   );
+  const { user } = useSelector((state) => state.auth);
 
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
@@ -85,8 +85,7 @@ const AdminDashboard = () => {
                   await dispatch(deleteProduct(id)).unwrap();
                   toast.success("Product deleted successfully!");
                 } catch (err) {
-                  toast.error("Failed to delete product!");
-                  console.error(err.message);
+                  toast.error(err?.message || "Failed to delete product!");
                 }
               }}
             >
@@ -125,6 +124,9 @@ const AdminDashboard = () => {
                 try {
                   const response = await API.delete(
                     `/payments/orders/${orderId}`,
+                    {
+                      headers: { Authorization: `Bearer ${user.token}` },
+                    },
                   );
 
                   if (response.data.success) {
@@ -162,9 +164,11 @@ const AdminDashboard = () => {
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      await API.put(`/payments/orders/${orderId}/status`, {
-        status: newStatus,
-      });
+      await API.put(
+        `/payments/orders/${orderId}/status`,
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${user.token}` } },
+      );
       toast.success("Order status updated!");
       // Update the order in state
       setOrders((prevOrders) =>
@@ -173,8 +177,9 @@ const AdminDashboard = () => {
         ),
       );
     } catch (err) {
-      toast.error("Failed to update order status");
-      console.error(err.message);
+      toast.error(
+        err.response?.data?.message || "Failed to update order status",
+      );
     }
   };
 
@@ -196,7 +201,13 @@ const AdminDashboard = () => {
               onClick={async () => {
                 toast.dismiss(t.id);
                 try {
-                  await API.put(`/payments/orders/${orderId}/cancel`);
+                  await API.put(
+                    `/payments/orders/${orderId}/cancel`,
+                    {},
+                    {
+                      headers: { Authorization: `Bearer ${user.token}` },
+                    },
+                  );
                   toast.success("Order cancelled successfully!");
                   // Update the order status in state
                   setOrders((prevOrders) =>
@@ -242,12 +253,6 @@ const AdminDashboard = () => {
             className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition shadow-lg"
           >
             <Plus size={20} /> Add New Product
-          </Link>
-          <Link
-            to="/admin/analytics"
-            className="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-purple-700 transition shadow-lg"
-          >
-            <BarChart size={20} /> Analytics
           </Link>
         </div>
 
@@ -595,7 +600,7 @@ const AdminDashboard = () => {
                             <Eye size={18} />
                           </Link>
 
-                          {/* Show delete button ONLY for unpaid orders */}
+                          {/* Show delete button for unpaid orders */}
                           {!order.isPaid && (
                             <button
                               onClick={() => handleDeleteOrder(order._id)}

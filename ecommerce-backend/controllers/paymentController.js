@@ -117,7 +117,6 @@ export const initializeChapaPayment = async (req, res) => {
   }
 };
 
-
 export const deleteOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -128,8 +127,9 @@ export const deleteOrder = async (req, res) => {
 
     // Check if order is paid - prevent deletion of paid orders
     if (order.isPaid) {
-      return res.status(400).json({ 
-        message: "Cannot delete paid orders. Paid orders must be kept for record keeping." 
+      return res.status(400).json({
+        message:
+          "Cannot delete paid orders. Paid orders must be kept for record keeping.",
       });
     }
 
@@ -137,19 +137,19 @@ export const deleteOrder = async (req, res) => {
     const orderInfo = {
       id: order._id,
       totalPrice: order.totalPrice,
-      orderStatus: order.orderStatus
+      orderStatus: order.orderStatus,
     };
 
     // Permanently delete the order from database
     await Order.findByIdAndDelete(req.params.id);
-    
+
     console.log(`Order ${req.params.id} deleted successfully by admin`);
-    
-    res.json({ 
+
+    res.json({
       success: true,
       message: "Order deleted successfully",
       deletedOrderId: order._id,
-      order: orderInfo
+      order: orderInfo,
     });
   } catch (error) {
     console.error("Delete order error:", error);
@@ -376,9 +376,6 @@ export const getAllOrders = async (req, res) => {
   }
 };
 
-// @desc    Update Order Status (Admin only)
-// @route   PUT /api/payments/orders/:id/status
-// @access  Private/Admin
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -391,8 +388,13 @@ export const updateOrderStatus = async (req, res) => {
     order.orderStatus = status;
     await order.save();
 
-    res.json(order);
+    res.json({
+      success: true,
+      message: "Order status updated successfully",
+      order,
+    });
   } catch (error) {
+    console.error("Update order status error:", error);
     res.status(500).json({ message: error.message });
   }
 };
