@@ -1,10 +1,11 @@
 // client/src/pages/Checkout.jsx
 import { Info } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "../context/useTheme";
+import { clearCart } from "../features/cart/cartSlice";
 import API from "../services/api";
 
 const CHAPA_PAYMENT_METHODS = [
@@ -57,11 +58,12 @@ const CHAPA_PAYMENT_METHODS = [
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { items } = useSelector((state) => state.cart);
   const { user } = useSelector((state) => state.auth);
   const { isDarkMode } = useTheme();
 
-  const [selectedMethod, setSelectedMethod] = useState("chapa");
+  const [selectedMethod, setSelectedMethod] = useState("demo"); // Default to demo for testing
   const [selectedChapaMethod, setSelectedChapaMethod] = useState("card");
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -97,6 +99,14 @@ const Checkout = () => {
     (acc, item) => acc + item.quantity,
     0,
   );
+
+  // Redirect if no items
+  useEffect(() => {
+    if (checkoutItems.length === 0) {
+      toast.error("No items to checkout!");
+      navigate("/cart");
+    }
+  }, [checkoutItems.length, navigate]);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -141,15 +151,17 @@ const Checkout = () => {
       return false;
     }
 
-    // Validate payment method specific fields
-    const method = CHAPA_PAYMENT_METHODS.find(
-      (m) => m.id === selectedChapaMethod,
-    );
-    if (method) {
-      for (const field of method.fields) {
-        if (!formData[field]?.trim()) {
-          toast.error(`Please enter ${field.replace("_", " ")}`);
-          return false;
+    // Validate payment method specific fields only for non-demo payments
+    if (selectedMethod !== "demo") {
+      const method = CHAPA_PAYMENT_METHODS.find(
+        (m) => m.id === selectedChapaMethod,
+      );
+      if (method) {
+        for (const field of method.fields) {
+          if (!formData[field]?.trim()) {
+            toast.error(`Please enter ${field.replace("_", " ")}`);
+            return false;
+          }
         }
       }
     }
@@ -157,7 +169,69 @@ const Checkout = () => {
     return true;
   };
 
-  const handlePayment = async () => {
+  // Handle Demo Payment
+  const handleDemoPayment = async () => {
+    if (!user) {
+      toast.error("Please login first");
+      navigate("/login");
+      return;
+    }
+
+    if (checkoutItems.length === 0) {
+      toast.error("No items to checkout!");
+      return;
+    }
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Simulate payment processing delay
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Create demo order data
+      const demoOrderData = {
+        amount: checkoutTotal,
+        email: formData.email,
+        firstName: formData.fullName.split(" ")[0],
+        lastName: formData.fullName.split(" ").slice(1).join(" ") || "Customer",
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        items: checkoutItems,
+        payment_method: "demo",
+        isDemo: true,
+      };
+
+      // Clear the cart
+      dispatch(clearCart());
+
+      // Show success message
+      toast.success("Demo payment successful! 🎉");
+
+      // Generate a fake order ID for demo
+      const demoOrderId = `DEMO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      // Navigate to success page with demo data
+      navigate(`/order-success/${demoOrderId}`, {
+        state: {
+          isDemo: true,
+          orderDetails: demoOrderData,
+        },
+      });
+    } catch (err) {
+      console.error("Demo payment error:", err);
+      toast.error("Demo payment failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Real Payment with Chapa
+  const handleChapaPayment = async () => {
     if (!user) {
       toast.error("Please login first");
       navigate("/login");
@@ -188,7 +262,6 @@ const Checkout = () => {
         tx_ref,
         items: checkoutItems,
         payment_method: selectedChapaMethod,
-        // Include payment method specific data
         payment_data: {
           ...(selectedChapaMethod === "card" && {
             card_number: formData.card_number,
@@ -215,7 +288,6 @@ const Checkout = () => {
       );
 
       if (data.data?.checkout_url) {
-        // Store order info in localStorage for reference
         localStorage.setItem(
           "lastOrder",
           JSON.stringify({
@@ -242,6 +314,34 @@ const Checkout = () => {
   };
 
   const renderPaymentFields = () => {
+    if (selectedMethod === "demo") {
+      return (
+        <div className="space-y-4 mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🧪</span>
+            <h3 className="font-bold text-green-700 dark:text-green-400">
+              Demo Payment Mode
+            </h3>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            This is a demo payment. No real money will be charged. Click "Pay
+            with Demo" to simulate a successful payment.
+          </p>
+          <div className="bg-white dark:bg-gray-800 p-3 rounded-lg">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              📝 Demo Order Summary:
+            </p>
+            <p className="text-sm font-bold text-gray-800 dark:text-white">
+              Total: {checkoutTotal} ETB
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              This is for testing purposes only.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     const method = CHAPA_PAYMENT_METHODS.find(
       (m) => m.id === selectedChapaMethod,
     );
@@ -358,13 +458,17 @@ const Checkout = () => {
           </div>
         )}
 
-        {/* Demo Info Message */}
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
           ℹ️ Click "Fill Demo Data" to use test credentials
         </p>
       </div>
     );
   };
+
+  // If no items, don't render the form
+  if (checkoutItems.length === 0) {
+    return null;
+  }
 
   return (
     <div
@@ -513,7 +617,43 @@ const Checkout = () => {
             </h2>
 
             <div className="space-y-3 mb-6">
-              <label className="flex items-center p-4 border-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+              {/* Demo Payment Option */}
+              <label
+                className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                  selectedMethod === "demo"
+                    ? "border-green-600 bg-green-50 dark:bg-green-900/20"
+                    : "border-gray-200 dark:border-gray-700 hover:border-green-300"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="demo"
+                  checked={selectedMethod === "demo"}
+                  onChange={(e) => setSelectedMethod(e.target.value)}
+                  className="mr-3"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🧪</span>
+                    <span className="font-bold dark:text-white">
+                      Demo Payment
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Test the checkout flow without real payment
+                  </p>
+                </div>
+              </label>
+
+              {/* Chapa Payment Option */}
+              <label
+                className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                  selectedMethod === "chapa"
+                    ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                    : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
+                }`}
+              >
                 <input
                   type="radio"
                   name="paymentMethod"
@@ -528,13 +668,13 @@ const Checkout = () => {
                     <span className="font-bold dark:text-white">Chapa</span>
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Multiple payment options via Chapa
+                    Pay with Card, Telebirr, CBE Birr via Chapa
                   </p>
                 </div>
               </label>
             </div>
 
-            {/* Chapa Payment Method Selection */}
+            {/* Payment Method Details */}
             {selectedMethod === "chapa" && (
               <div className="mb-6">
                 <h3 className="font-bold text-gray-700 dark:text-gray-300 mb-3">
@@ -572,19 +712,40 @@ const Checkout = () => {
                     </label>
                   ))}
                 </div>
-
-                {/* Dynamic payment fields based on selected method */}
-                {renderPaymentFields()}
               </div>
             )}
 
-            <button
-              onClick={handlePayment}
-              disabled={loading || checkoutItems.length === 0}
-              className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Processing..." : `Pay ${checkoutTotal} ETB`}
-            </button>
+            {/* Dynamic payment fields */}
+            {renderPaymentFields()}
+
+            {/* Payment Button */}
+            {selectedMethod === "demo" ? (
+              <button
+                onClick={handleDemoPayment}
+                disabled={loading || checkoutItems.length === 0}
+                className="w-full py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
+                    Processing...
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-xl">🧪</span>
+                    Pay with Demo ({checkoutTotal} ETB)
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={handleChapaPayment}
+                disabled={loading || checkoutItems.length === 0}
+                className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Processing..." : `Pay ${checkoutTotal} ETB`}
+              </button>
+            )}
 
             <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-4">
               Your payment information is secure and encrypted
@@ -593,7 +754,8 @@ const Checkout = () => {
             {/* Demo Mode Notice */}
             <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <p className="text-xs text-yellow-700 dark:text-yellow-400 text-center">
-                🧪 Demo Mode - Use "Fill Demo Data" for test credentials
+                🧪 Demo Mode Available - Use "Demo Payment" for testing without
+                real money
               </p>
             </div>
           </div>
