@@ -1,5 +1,4 @@
 // client/src/pages/AdminAddProduct.jsx
-import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { useSelector } from "react-redux";
@@ -28,7 +27,7 @@ const AdminAddProduct = () => {
 
   const [image, setImage] = useState(null);
   const { user } = useSelector((state) => state.auth);
-  const { isDarkMode, setIsDarkMode } = useTheme();
+  const { isDarkMode } = useTheme(); // Keep isDarkMode but remove setIsDarkMode
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -78,16 +77,7 @@ const AdminAddProduct = () => {
     <div
       className={`min-h-screen ${isDarkMode ? "dark" : ""} bg-gray-50 dark:bg-gray-950 transition-colors duration-300 py-10`}
     >
-      {/* Theme Toggle Button */}
-      <div className="max-w-lg mx-auto mb-4 flex justify-end px-4">
-        <button
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          className="p-3 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-yellow-400 hover:scale-110 transition shadow-lg border border-gray-200 dark:border-gray-700"
-          aria-label="Toggle theme"
-        >
-          {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
-        </button>
-      </div>
+      {/* REMOVED: Duplicate theme toggle button */}
 
       <div className="max-w-lg mx-auto p-8 bg-white dark:bg-gray-900 shadow-2xl rounded-3xl border border-gray-100 dark:border-gray-800 transition-colors duration-300">
         <h2 className="text-3xl font-black mb-8 text-gray-800 dark:text-white tracking-tighter">
