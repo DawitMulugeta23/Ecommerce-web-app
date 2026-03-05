@@ -1,3 +1,7 @@
+// backend/controllers/productController.js
+import Cart from "../models/Cart.js";
+import Comment from "../models/Comment.js";
+import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 
 // @desc    Get all products
@@ -48,7 +52,7 @@ export const createProduct = async (req, res) => {
       category,
       countInStock: parseInt(countInStock),
       image: req.file ? req.file.path : req.body.image,
-      user: req.user._id, // Store who created the product
+      user: req.user._id,
     });
 
     const populatedProduct = await Product.findById(product._id).populate(
@@ -96,7 +100,7 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-// @desc    Delete product
+// @desc    Delete product completely from database
 // @route   DELETE /api/products/:id
 // @access  Private/Admin
 export const deleteProduct = async (req, res) => {
@@ -107,13 +111,43 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    // Delete all comments related to this product
+    await Comment.deleteMany({ product: req.params.id });
+
+    // Remove product from all carts
+    await Cart.updateMany(
+      { "cartItems.product": req.params.id },
+      { $pull: { cartItems: { product: req.params.id } } },
+    );
+
+    // Remove product from orders (but keep orders, just mark product as deleted)
+    await Order.updateMany(
+      { "orderItems.product": req.params.id },
+      { $set: { "orderItems.$[elem].name": "[Deleted Product]" } },
+      { arrayFilters: [{ "elem.product": req.params.id }] },
+    );
+
+    // Finally delete the product
     await product.deleteOne();
-    res.json({ message: "Product deleted successfully" });
+
+    console.log(
+      `Product ${req.params.id} deleted completely from database by admin ${req.user._id}`,
+    );
+
+    res.json({
+      success: true,
+      message: "Product deleted successfully from database",
+      deletedProductId: req.params.id,
+    });
   } catch (error) {
+    console.error("Delete product error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
+// @desc    Like/Unlike a product
+// @route   POST /api/products/:id/like
+// @access  Private
 export const toggleLike = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -149,7 +183,9 @@ export const toggleLike = async (req, res) => {
   }
 };
 
-
+// @desc    Get products created by specific user
+// @route   GET /api/products/user/:userId
+// @access  Private/Admin
 export const getProductsByUser = async (req, res) => {
   try {
     const products = await Product.find({ user: req.params.userId })

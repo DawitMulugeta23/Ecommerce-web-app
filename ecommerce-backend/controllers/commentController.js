@@ -46,6 +46,9 @@ export const getProductComments = async (req, res) => {
       ratingDistribution[stat._id] = stat.count;
     });
 
+    // Update product rating when fetching comments
+    await updateProductRating(productId);
+
     res.json({
       comments,
       ratingDistribution,
@@ -56,6 +59,27 @@ export const getProductComments = async (req, res) => {
   } catch (error) {
     console.error("Error in getProductComments:", error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Helper function to update product rating
+const updateProductRating = async (productId) => {
+  try {
+    const comments = await Comment.find({ product: productId });
+    if (comments.length === 0) return;
+
+    const totalRating = comments.reduce(
+      (sum, comment) => sum + comment.rating,
+      0,
+    );
+    const avgRating = totalRating / comments.length;
+
+    await Product.findByIdAndUpdate(productId, {
+      rating: avgRating,
+      numReviews: comments.length,
+    });
+  } catch (error) {
+    console.error("Error updating product rating:", error);
   }
 };
 
@@ -95,6 +119,9 @@ export const addComment = async (req, res) => {
     // Populate user details
     await newComment.populate("user", "name email profilePicture");
 
+    // Update product rating
+    await updateProductRating(productId);
+
     res.status(201).json({
       success: true,
       comment: newComment,
@@ -129,7 +156,11 @@ export const deleteComment = async (req, res) => {
         .json({ message: "Not authorized to delete this comment!" });
     }
 
+    const productId = comment.product;
     await comment.deleteOne();
+
+    // Update product rating after deletion
+    await updateProductRating(productId);
 
     res.json({
       success: true,
@@ -218,7 +249,6 @@ export const replyToComment = async (req, res) => {
 // @route   PUT /api/comments/:id
 // @access  Private
 export const updateComment = async (req, res) => {
-  // Comment editing is disabled
   return res.status(403).json({
     message:
       "Comment editing is not allowed. Please delete and create a new comment.",

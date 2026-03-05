@@ -39,8 +39,9 @@ const CommentSection = ({ productId, onCommentUpdate }) => {
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [rating, setRating] = useState(5);
-  const [replyTo, setReplyTo] = useState(null);
+  // const [replyTo, setReplyTo] = useState(null);
   const [replyText, setReplyText] = useState("");
+  const [replyingToCommentId, setReplyingToCommentId] = useState(null);
   const [stats, setStats] = useState({
     ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
     totalComments: 0,
@@ -149,7 +150,7 @@ const CommentSection = ({ productId, onCommentUpdate }) => {
     try {
       await API.post(`/comments/${commentId}/reply`, { text: replyText });
       toast.success("Reply added!");
-      setReplyTo(null);
+      setReplyingToCommentId(null);
       setReplyText("");
       fetchComments();
     } catch (err) {
@@ -439,7 +440,11 @@ const CommentSection = ({ productId, onCommentUpdate }) => {
 
                   <button
                     onClick={() =>
-                      setReplyTo(replyTo === comment._id ? null : comment._id)
+                      setReplyingToCommentId(
+                        replyingToCommentId === comment._id
+                          ? null
+                          : comment._id,
+                      )
                     }
                     className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 transition"
                   >
@@ -449,7 +454,7 @@ const CommentSection = ({ productId, onCommentUpdate }) => {
                 </div>
 
                 {/* Reply Form */}
-                {replyTo === comment._id && (
+                {replyingToCommentId === comment._id && (
                   <div className="mt-4 pl-6 border-l-2 border-gray-200 dark:border-gray-700">
                     <textarea
                       value={replyText}
@@ -466,7 +471,10 @@ const CommentSection = ({ productId, onCommentUpdate }) => {
                         Post Reply
                       </button>
                       <button
-                        onClick={() => setReplyTo(null)}
+                        onClick={() => {
+                          setReplyingToCommentId(null);
+                          setReplyText("");
+                        }}
                         className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition"
                       >
                         Cancel

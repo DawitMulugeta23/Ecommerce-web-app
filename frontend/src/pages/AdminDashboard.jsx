@@ -64,7 +64,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // ✅ FIXED: Delete product function
   const handleDeleteProduct = async (id, name) => {
     toast(
       (t) => (
@@ -83,19 +82,10 @@ const AdminDashboard = () => {
               onClick={async () => {
                 toast.dismiss(t.id);
                 try {
-                  // ✅ FIXED: Properly dispatch deleteProduct and handle response
-                  const result = await dispatch(deleteProduct(id)).unwrap();
-                  if (result) {
-                    toast.success("Product deleted successfully!");
-                  }
+                  await dispatch(deleteProduct(id)).unwrap();
+                  toast.success("Product deleted successfully!");
                 } catch (err) {
-                  // ✅ FIXED: Better error handling
-                  console.error("Delete error:", err);
-                  toast.error(
-                    err?.message ||
-                      err?.response?.data?.message ||
-                      "Failed to delete product!",
-                  );
+                  toast.error(err?.message || "Failed to delete product!");
                 }
               }}
             >
@@ -464,7 +454,6 @@ const AdminDashboard = () => {
                           >
                             <Edit size={18} />
                           </Link>
-                          {/* ✅ Delete button with proper function */}
                           <button
                             onClick={() =>
                               handleDeleteProduct(product._id, product.name)

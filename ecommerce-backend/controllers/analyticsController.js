@@ -2,6 +2,7 @@
 import Comment from "../models/Comment.js";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
+import User from "../models/User.js";
 
 // @desc    Get analytics dashboard data
 // @route   GET /api/analytics/dashboard
@@ -31,240 +32,192 @@ export const getAnalyticsDashboard = async (req, res) => {
         startDate.setDate(startDate.getDate() - 30);
     }
 
-    // 1. Product Performance Data
-    const productPerformance = await Order.aggregate([
-      {
-        $match: {
-          isPaid: true,
-          createdAt: { $gte: startDate, $lte: endDate },
-        },
-      },
-      { $unwind: "$orderItems" },
-      {
-        $group: {
-          _id: "$orderItems.product",
-          productName: { $first: "$orderItems.name" },
-          totalSold: { $sum: "$orderItems.quantity" },
-          totalRevenue: {
-            $sum: { $multiply: ["$orderItems.quantity", "$orderItems.price"] },
-          },
-          averagePrice: { $avg: "$orderItems.price" },
-        },
-      },
-      { $sort: { totalSold: -1 } },
-      { $limit: 20 },
-    ]);
+    // Get all paid orders in date range
+    const paidOrders = await Order.find({
+      isPaid: true,
+      createdAt: { $gte: startDate, $lte: endDate },
+    }).populate("orderItems.product");
 
-    // 2. Products with low stock (በክምችት ውስጥ ያሉ አነስተኛ ምርቶች)
+    // Calculate summary
+    const totalRevenue = paidOrders.reduce(
+      (sum, order) => sum + order.totalPrice,
+      0,
+    );
+    const totalOrders = paidOrders.length;
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const totalProducts = await Product.countDocuments();
+    const totalUsers = await User.countDocuments();
+
+    // 1. Daily sales for line chart
+    const dailySalesMap = new Map();
+    const dateArray = [];
+    for (
+      let d = new Date(startDate);
+      d <= endDate;
+      d.setDate(d.getDate() + 1)
+    ) {
+      const dateStr = d.toISOString().split("T")[0];
+      dateArray.push(dateStr);
+      dailySalesMap.set(dateStr, { totalSales: 0, orderCount: 0 });
+    }
+
+    paidOrders.forEach((order) => {
+      const dateStr = order.createdAt.toISOString().split("T")[0];
+      if (dailySalesMap.has(dateStr)) {
+        const current = dailySalesMap.get(dateStr);
+        dailySalesMap.set(dateStr, {
+          totalSales: current.totalSales + order.totalPrice,
+          orderCount: current.orderCount + 1,
+        });
+      }
+    });
+
+    const dailySales = Array.from(dailySalesMap, ([date, data]) => ({
+      _id: date,
+      totalSales: data.totalSales,
+      orderCount: data.orderCount,
+    })).sort((a, b) => a._id.localeCompare(b._id));
+
+    // 2. Category performance
+    const categoryMap = new Map();
+
+    paidOrders.forEach((order) => {
+      order.orderItems.forEach((item) => {
+        const category = item.product?.category || "Uncategorized";
+        if (!categoryMap.has(category)) {
+          categoryMap.set(category, {
+            revenue: 0,
+            totalSold: 0,
+            productCount: new Set(),
+          });
+        }
+        const catData = categoryMap.get(category);
+        catData.revenue += item.price * item.quantity;
+        catData.totalSold += item.quantity;
+        catData.productCount.add(item.product?._id?.toString());
+      });
+    });
+
+    const categoryPerformance = Array.from(categoryMap, ([category, data]) => ({
+      category,
+      revenue: data.revenue,
+      totalSold: data.totalSold,
+      uniqueProducts: data.productCount.size,
+    })).sort((a, b) => b.revenue - a.revenue);
+
+    // 3. High demand products
+    const productSalesMap = new Map();
+
+    paidOrders.forEach((order) => {
+      order.orderItems.forEach((item) => {
+        if (!item.product) return;
+        const productId = item.product._id.toString();
+        if (!productSalesMap.has(productId)) {
+          productSalesMap.set(productId, {
+            _id: productId,
+            productName: item.name,
+            totalSold: 0,
+            revenue: 0,
+          });
+        }
+        const prodData = productSalesMap.get(productId);
+        prodData.totalSold += item.quantity;
+        prodData.revenue += item.price * item.quantity;
+      });
+    });
+
+    const highDemandProducts = Array.from(productSalesMap.values())
+      .sort((a, b) => b.totalSold - a.totalSold)
+      .slice(0, 10);
+
+    // 4. Low stock products
     const lowStockProducts = await Product.find({
-      countInStock: { $lt: 10 },
+      countInStock: { $lt: 10, $gt: 0 },
     })
-      .select("name countInStock price category")
+      .select("name countInStock price category image")
       .sort({ countInStock: 1 })
       .limit(20);
 
-    // 3. Products not selling well (ለሽያጭ ያልበቁ ምርቶች)
-    const soldProductIds = await Order.aggregate([
-      { $match: { isPaid: true, createdAt: { $gte: startDate } } },
-      { $unwind: "$orderItems" },
-      { $group: { _id: "$orderItems.product" } },
-    ]);
-
-    const soldIds = soldProductIds.map((item) => item._id);
+    // 5. Not selling products (products created before startDate with no sales)
+    const soldProductIds = new Set();
+    paidOrders.forEach((order) => {
+      order.orderItems.forEach((item) => {
+        if (item.product?._id) {
+          soldProductIds.add(item.product._id.toString());
+        }
+      });
+    });
 
     const notSellingProducts = await Product.find({
-      _id: { $nin: soldIds },
+      _id: { $nin: Array.from(soldProductIds) },
       createdAt: { $lte: startDate },
     })
-      .select("name price category countInStock createdAt")
+      .select("name price category countInStock createdAt image")
       .limit(20);
 
-    // 4. Products with high demand (በከፍተኛ ፍላጎት ላይ ያሉ)
-    const highDemandProducts = await Order.aggregate([
-      {
-        $match: {
-          isPaid: true,
-          createdAt: { $gte: startDate },
-        },
-      },
-      { $unwind: "$orderItems" },
-      {
-        $group: {
-          _id: "$orderItems.product",
-          productName: { $first: "$orderItems.name" },
-          totalSold: { $sum: "$orderItems.quantity" },
-          revenue: {
-            $sum: { $multiply: ["$orderItems.quantity", "$orderItems.price"] },
-          },
-        },
-      },
-      { $sort: { totalSold: -1 } },
-      { $limit: 10 },
-    ]);
-
-    // 5. Category performance
-    const categoryPerformance = await Order.aggregate([
-      {
-        $match: {
-          isPaid: true,
-          createdAt: { $gte: startDate },
-        },
-      },
-      { $unwind: "$orderItems" },
-      {
-        $lookup: {
-          from: "products",
-          localField: "orderItems.product",
-          foreignField: "_id",
-          as: "productInfo",
-        },
-      },
-      { $unwind: "$productInfo" },
-      {
-        $group: {
-          _id: "$productInfo.category",
-          totalSold: { $sum: "$orderItems.quantity" },
-          revenue: {
-            $sum: { $multiply: ["$orderItems.quantity", "$orderItems.price"] },
-          },
-          productCount: { $addToSet: "$orderItems.product" },
-        },
-      },
-      {
-        $project: {
-          category: "$_id",
-          totalSold: 1,
-          revenue: 1,
-          uniqueProducts: { $size: "$productCount" },
-        },
-      },
-      { $sort: { revenue: -1 } },
-    ]);
-
-    // 6. Monthly sales trend (for line chart)
-    const monthlyTrend = await Order.aggregate([
-      {
-        $match: {
-          isPaid: true,
-          createdAt: {
-            $gte: new Date(
-              new Date().setFullYear(new Date().getFullYear() - 1),
-            ),
-          },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$createdAt" },
-            month: { $month: "$createdAt" },
-          },
-          totalSales: { $sum: "$totalPrice" },
-          orderCount: { $sum: 1 },
-        },
-      },
-      { $sort: { "_id.year": 1, "_id.month": 1 } },
-    ]);
-
-    // 7. Product likes distribution
-    const likeDistribution = await Product.aggregate([
-      { $match: { likeCount: { $gt: 0 } } },
-      {
-        $group: {
-          _id: null,
-          avgLikes: { $avg: "$likeCount" },
-          maxLikes: { $max: "$likeCount" },
-          totalLikes: { $sum: "$likeCount" },
-          productsWithLikes: { $sum: 1 },
-        },
-      },
-    ]);
-
-    // 8. Comment analytics
-    const commentAnalytics = await Comment.aggregate([
-      { $match: { createdAt: { $gte: startDate } } },
-      {
-        $group: {
-          _id: null,
-          totalComments: { $sum: 1 },
-          avgRating: { $avg: "$rating" },
-          totalLikes: { $sum: "$likeCount" },
-        },
-      },
-    ]);
-
-    // 9. Top rated products
+    // 6. Top rated products
     const topRatedProducts = await Product.find({ rating: { $gt: 0 } })
-      .select("name price category rating numReviews likeCount")
+      .select("name price category rating numReviews likeCount image")
       .sort({ rating: -1, numReviews: -1 })
       .limit(10);
 
-    // 10. Daily sales for bar chart (last 30 days)
-    const dailySales = await Order.aggregate([
-      {
-        $match: {
-          isPaid: true,
-          createdAt: { $gte: startDate },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
-          },
-          totalSales: { $sum: "$totalPrice" },
-          orderCount: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
+    // 7. Like analytics
+    const productsWithLikes = await Product.find({ likeCount: { $gt: 0 } });
+    const totalLikes = productsWithLikes.reduce(
+      (sum, p) => sum + p.likeCount,
+      0,
+    );
+    const avgLikes =
+      productsWithLikes.length > 0 ? totalLikes / productsWithLikes.length : 0;
+
+    // Get recent comments for analytics
+    const recentComments = await Comment.find({
+      createdAt: { $gte: startDate },
+    }).populate("user", "name");
 
     res.json({
       success: true,
       data: {
         summary: {
-          totalProducts: await Product.countDocuments(),
-          totalOrders: await Order.countDocuments({ isPaid: true }),
-          totalRevenue:
-            (
-              await Order.aggregate([
-                { $match: { isPaid: true } },
-                { $group: { _id: null, total: { $sum: "$totalPrice" } } },
-              ])
-            )[0]?.total || 0,
-          averageOrderValue:
-            (
-              await Order.aggregate([
-                { $match: { isPaid: true } },
-                { $group: { _id: null, avg: { $avg: "$totalPrice" } } },
-              ])
-            )[0]?.avg || 0,
+          totalProducts,
+          totalOrders,
+          totalRevenue,
+          averageOrderValue,
+          totalUsers,
         },
-        productPerformance,
-        lowStockProducts, // በክምችት ውስጥ ያሉ አነስተኛ ምርቶች
-        notSellingProducts, // ለሽያጭ ያልበቁ ምርቶች (ባለፉት 30 ቀናት ያልተሸጡ)
-        highDemandProducts, // በከፍተኛ ፍላጎት ላይ ያሉ ምርቶች
-        categoryPerformance,
-        monthlyTrend,
-        likeDistribution: likeDistribution[0] || {
-          avgLikes: 0,
-          maxLikes: 0,
-          totalLikes: 0,
-          productsWithLikes: 0,
-        },
-        commentAnalytics: commentAnalytics[0] || {
-          totalComments: 0,
-          avgRating: 0,
-          totalLikes: 0,
-        },
-        topRatedProducts,
         dailySales,
+        categoryPerformance,
+        highDemandProducts,
+        lowStockProducts,
+        notSellingProducts,
+        topRatedProducts,
+        likeDistribution: {
+          totalLikes,
+          avgLikes: avgLikes.toFixed(1),
+          productsWithLikes: productsWithLikes.length,
+        },
+        commentAnalytics: {
+          totalComments: recentComments.length,
+          avgRating: await getAverageRating(),
+          totalLikes: recentComments.reduce(
+            (sum, c) => sum + (c.likeCount || 0),
+            0,
+          ),
+        },
       },
     });
   } catch (error) {
     console.error("Analytics Error:", error);
     res.status(500).json({ message: error.message });
   }
+};
+
+// Helper function to get average rating
+const getAverageRating = async () => {
+  const products = await Product.find({ rating: { $gt: 0 } });
+  if (products.length === 0) return 0;
+  const sum = products.reduce((acc, p) => acc + p.rating, 0);
+  return (sum / products.length).toFixed(1);
 };
 
 // @desc    Get product demand analysis
@@ -328,12 +281,12 @@ export const getProductDemandAnalysis = async (req, res) => {
           },
           demandScore: {
             $add: [
-              { $multiply: ["$likeCount", 2] }, // Likes weighted by 2
-              { $ifNull: [{ $arrayElemAt: ["$salesData.totalSold", 0] }, 0] }, // Sales count
+              { $multiply: ["$likeCount", 2] },
+              { $ifNull: [{ $arrayElemAt: ["$salesData.totalSold", 0] }, 0] },
               {
                 $cond: [
                   { $gt: ["$countInStock", 0] },
-                  { $divide: [1, "$countInStock"] }, // Low stock increases demand score
+                  { $divide: [10, "$countInStock"] },
                   0,
                 ],
               },
