@@ -1,3 +1,4 @@
+// client/src/App.jsx
 import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import Footer from "./components/Footer";
 import Navbar from "./components/Navbar";
@@ -18,6 +19,7 @@ import MyOrders from "./pages/MyOrders";
 import ProductDetails from "./pages/ProductDetails";
 import Register from "./pages/Register";
 import Success from "./pages/Success";
+import ZeroStockProducts from "./pages/ZeroStockProducts";
 
 function App() {
   return (
@@ -37,14 +39,8 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/cart" element={<Cart />} />
-              <Route
-                path="/admin/analytics"
-                element={
-                  <ProtectedRoute isAdmin={true}>
-                    <AdminAnalytics />
-                  </ProtectedRoute>
-                }
-              />
+              
+              {/* Protected Routes */}
               <Route
                 path="/my-orders"
                 element={
@@ -76,6 +72,22 @@ function App() {
                 element={
                   <ProtectedRoute isAdmin={true}>
                     <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/analytics"
+                element={
+                  <ProtectedRoute isAdmin={true}>
+                    <AdminAnalytics />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/zero-stock"
+                element={
+                  <ProtectedRoute isAdmin={true}>
+                    <ZeroStockProducts />
                   </ProtectedRoute>
                 }
               />

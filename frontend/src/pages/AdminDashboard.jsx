@@ -68,8 +68,9 @@ const AdminDashboard = () => {
     toast(
       (t) => (
         <div className="flex flex-col gap-3">
-          <p className="font-bold">Delete Product</p>
-          <p>Are you sure you want to delete "{name}"?</p>
+          <p className="font-bold text-red-600">⚠️ Permanent Delete</p>
+          <p>Are you sure you want to permanently delete "{name}"?</p>
+          <p className="text-sm text-gray-500">This action cannot be undone.</p>
           <div className="flex gap-2 justify-end">
             <button
               className="px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300"
@@ -81,11 +82,20 @@ const AdminDashboard = () => {
               className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700"
               onClick={async () => {
                 toast.dismiss(t.id);
+                const deletingToast = toast.loading("Deleting product...");
+                
                 try {
-                  await dispatch(deleteProduct(id)).unwrap();
-                  toast.success("Product deleted successfully!");
+                  const result = await dispatch(deleteProduct(id)).unwrap();
+                  console.log("Delete result:", result);
+                  
+                  if (result.success) {
+                    toast.success(`✅ "${name}" deleted successfully!`, { id: deletingToast });
+                  } else {
+                    toast.error("Failed to delete product", { id: deletingToast });
+                  }
                 } catch (err) {
-                  toast.error(err?.message || "Failed to delete product!");
+                  console.error("Delete error:", err);
+                  toast.error(err?.message || "Failed to delete product!", { id: deletingToast });
                 }
               }}
             >
@@ -101,6 +111,7 @@ const AdminDashboard = () => {
     );
   };
 
+  // Rest of the component remains the same...
   const handleDeleteOrder = async (orderId) => {
     toast(
       (t) => (
@@ -459,7 +470,7 @@ const AdminDashboard = () => {
                               handleDeleteProduct(product._id, product.name)
                             }
                             className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-                            title="Delete"
+                            title="Delete permanently"
                           >
                             <Trash2 size={18} />
                           </button>

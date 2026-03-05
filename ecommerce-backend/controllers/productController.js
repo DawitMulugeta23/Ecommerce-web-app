@@ -1,24 +1,34 @@
 // backend/controllers/productController.js
+import mongoose from "mongoose";
 import Cart from "../models/Cart.js";
 import Comment from "../models/Comment.js";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 
-// @desc    Get all products
+// @desc    Get all products - Filter out zero stock for non-admin users
 // @route   GET /api/products
 // @access  Public
 export const getProducts = async (req, res) => {
   try {
-    const products = await Product.find({})
+    let products = await Product.find({})
       .populate("user", "name email profilePicture")
       .sort({ createdAt: -1 });
+    
+    // Check if user is admin (from auth middleware)
+    const isAdmin = req.user && req.user.role === 'admin';
+    
+    // If not admin, filter out products with zero stock
+    if (!isAdmin) {
+      products = products.filter(product => product.countInStock > 0);
+    }
+    
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Get single product by ID
+// @desc    Get single product by ID - Check stock visibility
 // @route   GET /api/products/:id
 // @access  Public
 export const getProductById = async (req, res) => {
@@ -28,11 +38,49 @@ export const getProductById = async (req, res) => {
       "name email profilePicture",
     );
 
-    if (product) {
-      res.json(product);
-    } else {
-      res.status(404).json({ message: "Product not found!" });
+    if (!product) {
+      return res.status(404).json({ message: "Product not found!" });
     }
+
+    // Check if user is admin
+    const isAdmin = req.user && req.user.role === 'admin';
+    
+    // If product has zero stock and user is not admin, hide it
+    if (product.countInStock === 0 && !isAdmin) {
+      return res.status(404).json({ message: "Product not available!" });
+    }
+
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get all products for admin (including zero stock)
+// @route   GET /api/products/admin/all
+// @access  Private/Admin
+export const getAllProductsAdmin = async (req, res) => {
+  try {
+    const products = await Product.find({})
+      .populate("user", "name email profilePicture")
+      .sort({ createdAt: -1 });
+    
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get zero stock products for admin
+// @route   GET /api/products/zero-stock
+// @access  Private/Admin
+export const getZeroStockProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ countInStock: 0 })
+      .populate("user", "name email profilePicture")
+      .sort({ createdAt: -1 });
+    
+    res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -100,48 +148,149 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-// @desc    Delete product completely from database
+// @desc    Delete product (soft delete - just set stock to 0)
 // @route   DELETE /api/products/:id
 // @access  Private/Admin
 export const deleteProduct = async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
+  try {
+    const productId = req.params.id;
+    console.log(`🗑️ Attempting to soft delete product: ${productId} by admin: ${req.user._id}`);
+
+    // Check if product exists
+    const product = await Product.findById(productId).session(session);
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      await session.abortTransaction();
+      session.endSession();
+      console.log(`❌ Product ${productId} not found`);
+      return res.status(404).json({ 
+        success: false,
+        message: "Product not found" 
+      });
     }
 
-    // Delete all comments related to this product
-    await Comment.deleteMany({ product: req.params.id });
+    console.log(`✅ Found product: ${product.name}, setting stock to 0...`);
 
-    // Remove product from all carts
-    await Cart.updateMany(
-      { "cartItems.product": req.params.id },
-      { $pull: { cartItems: { product: req.params.id } } },
-    );
+    // Instead of deleting, just set stock to 0
+    product.countInStock = 0;
+    await product.save({ session });
+    
+    // Also remove from all users' carts
+    const cartUpdateResult = await Cart.updateMany(
+      { "cartItems.product": productId },
+      { $pull: { cartItems: { product: productId } } }
+    ).session(session);
+    console.log(`✅ Removed product from ${cartUpdateResult.modifiedCount} carts`);
 
-    // Remove product from orders (but keep orders, just mark product as deleted)
-    await Order.updateMany(
-      { "orderItems.product": req.params.id },
-      { $set: { "orderItems.$[elem].name": "[Deleted Product]" } },
-      { arrayFilters: [{ "elem.product": req.params.id }] },
-    );
+    await session.commitTransaction();
+    session.endSession();
+    
+    console.log(`✅ Product ${productId} (${product.name}) soft deleted successfully (stock set to 0)`);
 
-    // Finally delete the product
-    await product.deleteOne();
-
-    console.log(
-      `Product ${req.params.id} deleted completely from database by admin ${req.user._id}`,
-    );
-
-    res.json({
+    res.json({ 
       success: true,
-      message: "Product deleted successfully from database",
-      deletedProductId: req.params.id,
+      message: "Product has been removed from store (stock set to 0)",
+      deletedProductId: productId,
+      deletedProductName: product.name
     });
+
   } catch (error) {
-    console.error("Delete product error:", error);
-    res.status(500).json({ message: error.message });
+    await session.abortTransaction();
+    session.endSession();
+    
+    console.error("❌ Soft delete product error details:", {
+      error: error.message,
+      stack: error.stack,
+      productId: req.params.id
+    });
+    
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to remove product: " + error.message 
+    });
+  }
+};
+
+// @desc    Permanently delete product (admin only)
+// @route   DELETE /api/products/:id/permanent
+// @access  Private/Admin
+export const permanentDeleteProduct = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const productId = req.params.id;
+    console.log(`🗑️ Attempting to permanently delete product: ${productId} by admin: ${req.user._id}`);
+
+    // Check if product exists
+    const product = await Product.findById(productId).session(session);
+    if (!product) {
+      await session.abortTransaction();
+      session.endSession();
+      console.log(`❌ Product ${productId} not found`);
+      return res.status(404).json({ 
+        success: false,
+        message: "Product not found" 
+      });
+    }
+
+    console.log(`✅ Found product: ${product.name}, proceeding with permanent deletion...`);
+
+    // 1. Delete all comments related to this product
+    const commentDeleteResult = await Comment.deleteMany({ product: productId }).session(session);
+    console.log(`✅ Deleted ${commentDeleteResult.deletedCount} comments`);
+
+    // 2. Remove product from all users' carts
+    const cartUpdateResult = await Cart.updateMany(
+      { "cartItems.product": productId },
+      { $pull: { cartItems: { product: productId } } }
+    ).session(session);
+    console.log(`✅ Removed from ${cartUpdateResult.modifiedCount} carts`);
+
+    // 3. Handle orders - mark product as deleted
+    const ordersWithProduct = await Order.find({
+      "orderItems.product": productId
+    }).session(session);
+
+    for (const order of ordersWithProduct) {
+      let orderModified = false;
+      for (const item of order.orderItems) {
+        if (item.product && item.product.toString() === productId) {
+          item.name = `${item.name} (Product Deleted)`;
+          item.product = null;
+          orderModified = true;
+        }
+      }
+      if (orderModified) {
+        await order.save({ session });
+      }
+    }
+
+    // 4. Finally delete the product
+    await Product.findByIdAndDelete(productId).session(session);
+    
+    await session.commitTransaction();
+    session.endSession();
+    
+    console.log(`✅ Product ${productId} permanently deleted from database`);
+
+    res.json({ 
+      success: true,
+      message: "Product permanently deleted from database",
+      deletedProductId: productId
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    
+    console.error("❌ Permanent delete error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to permanently delete product: " + error.message 
+    });
   }
 };
 

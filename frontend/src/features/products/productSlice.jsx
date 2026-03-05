@@ -4,9 +4,13 @@ import API from "../../services/api";
 
 export const fetchProducts = createAsyncThunk(
   "products/fetchProducts",
-  async () => {
-    const response = await API.get("/products");
-    return response.data;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await API.get("/products");
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || { message: "Failed to fetch products" });
+    }
   },
 );
 
@@ -51,6 +55,7 @@ export const updateProduct = createAsyncThunk(
   },
 );
 
+// FIXED: Removed unused 'dispatch' parameter
 export const deleteProduct = createAsyncThunk(
   "products/deleteProduct",
   async (id, { getState, rejectWithValue }) => {
@@ -61,9 +66,19 @@ export const deleteProduct = createAsyncThunk(
           Authorization: `Bearer ${auth.token}`,
         },
       };
-      await API.delete(`/products/${id}`, config);
-      return id;
+      
+      console.log(`🗑️ Attempting to delete product ${id}`);
+      const response = await API.delete(`/products/${id}`, config);
+      console.log("✅ Delete response:", response.data);
+      
+      // Return both the id and the response data
+      return { 
+        id, 
+        ...response.data,
+        success: true 
+      };
     } catch (err) {
+      console.error("❌ Delete product error:", err.response?.data || err.message);
       return rejectWithValue(
         err.response?.data || { message: "Failed to delete product" },
       );
@@ -99,16 +114,22 @@ const productSlice = createSlice({
     error: null,
     loading: false,
   },
-  reducers: {},
+  reducers: {
+    clearProductError: (state) => {
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       // Fetch products
       .addCase(fetchProducts.pending, (state) => {
         state.status = "loading";
+        state.error = null;
       })
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.status = "succeeded";
         state.items = action.payload;
+        state.error = null;
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.status = "failed";
@@ -118,10 +139,12 @@ const productSlice = createSlice({
       // Create product
       .addCase(createProduct.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(createProduct.fulfilled, (state, action) => {
         state.loading = false;
         state.items.unshift(action.payload);
+        state.error = null;
       })
       .addCase(createProduct.rejected, (state, action) => {
         state.loading = false;
@@ -131,6 +154,7 @@ const productSlice = createSlice({
       // Update product
       .addCase(updateProduct.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(updateProduct.fulfilled, (state, action) => {
         state.loading = false;
@@ -140,44 +164,45 @@ const productSlice = createSlice({
         if (index !== -1) {
           state.items[index] = action.payload;
         }
+        state.error = null;
       })
       .addCase(updateProduct.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
-      // Delete product
+      // Delete product - COMPLETELY REMOVE FROM STATE
       .addCase(deleteProduct.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = state.items.filter((p) => p._id !== action.payload);
+        // Remove the product from items array completely
+        const productId = action.payload.id;
+        const previousLength = state.items.length;
+        state.items = state.items.filter((p) => p._id !== productId);
+        const newLength = state.items.length;
+        
+        console.log(`✅ Product ${productId} removed from Redux state. Items: ${previousLength} -> ${newLength}`);
+        state.error = null;
       })
       .addCase(deleteProduct.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        console.error("❌ Delete rejected:", action.payload);
       })
 
-      // Toggle like - Update both likeCount and likes array
+      // Toggle like
       .addCase(toggleLike.fulfilled, (state, action) => {
-        const { productId, liked, likeCount } = action.payload;
+        const { productId, likeCount } = action.payload;
         const product = state.items.find((p) => p._id === productId);
         if (product) {
           product.likeCount = likeCount;
-
-          // Update likes array if user info is available
-          if (product.likes) {
-            if (liked) {
-              // Add current user to likes array (we don't have user ID here, but backend handles it)
-              // This is just to keep UI consistent - the actual data is in the database
-            } else {
-              // Remove current user from likes array
-            }
-          }
         }
       });
   },
 });
 
+export const { clearProductError } = productSlice.actions;
 export default productSlice.reducer;

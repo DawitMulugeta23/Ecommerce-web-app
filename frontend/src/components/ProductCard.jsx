@@ -26,14 +26,14 @@ const ProductCard = ({ product }) => {
     user && product.likes ? product.likes.includes(user.id) : false,
   );
   const [likeCount, setLikeCount] = useState(product.likeCount || 0);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleCardClick = () => {
-    // Navigate to product detail page
     navigate(`/product/${product._id}`);
   };
 
   const handleAddToCart = async (e) => {
-    e.stopPropagation(); // Prevent card click when clicking add to cart
+    e.stopPropagation();
 
     if (product.countInStock <= 0) {
       toast.error("Product out of stock!");
@@ -41,13 +41,11 @@ const ProductCard = ({ product }) => {
     }
 
     if (!user) {
-      // Guest user - save to localStorage
       dispatch(addToCartLocal(product));
       toast.success(`${product.name} added to cart!`);
       return;
     }
 
-    // Logged in user - save to database
     try {
       await dispatch(
         addToCartBackend({
@@ -63,7 +61,7 @@ const ProductCard = ({ product }) => {
   };
 
   const handleLike = async (e) => {
-    e.stopPropagation(); // Prevent card click when clicking like button
+    e.stopPropagation();
 
     if (!user) {
       toast.error("Please login to like products");
@@ -83,7 +81,7 @@ const ProductCard = ({ product }) => {
   };
 
   const handleBuyNow = (e) => {
-    e.stopPropagation(); // Prevent card click when clicking buy now
+    e.stopPropagation();
 
     if (product.countInStock <= 0) {
       toast.error("Product out of stock!");
@@ -106,33 +104,61 @@ const ProductCard = ({ product }) => {
   };
 
   const handleDelete = async (e) => {
-    e.stopPropagation(); // Prevent card click when clicking delete
-
+    e.stopPropagation();
+    
+    if (isDeleting) return;
+    
     toast(
       (t) => (
-        <div className="flex flex-col gap-3">
-          <p className="font-bold">Delete Product</p>
-          <p>Are you sure you want to delete "{product.name}"?</p>
-          <div className="flex gap-2 justify-end">
+        <div className="flex flex-col gap-3 p-2">
+          <p className="font-bold text-red-600 text-lg">⚠️ Permanent Delete</p>
+          <p className="text-gray-800 dark:text-gray-200">Are you sure you want to permanently delete "{product.name}"?</p>
+          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-sm">
+            <p className="font-bold mb-1">This will:</p>
+            <ul className="list-disc pl-4 space-y-1 text-gray-600 dark:text-gray-400">
+              <li>Remove product from database</li>
+              <li>Delete all comments</li>
+              <li>Remove from all users' carts</li>
+              <li>Mark as deleted in orders</li>
+            </ul>
+          </div>
+          <div className="flex gap-2 justify-end mt-2">
             <button
-              className="px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300"
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 font-bold transition"
               onClick={() => toast.dismiss(t.id)}
             >
-              No
+              Cancel
             </button>
             <button
-              className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold flex items-center gap-2 transition"
               onClick={async () => {
                 toast.dismiss(t.id);
+                setIsDeleting(true);
+                
+                const deletingToast = toast.loading("Deleting product...");
+                
                 try {
-                  await dispatch(deleteProduct(product._id)).unwrap();
-                  toast.success("Product deleted successfully!");
+                  const result = await dispatch(deleteProduct(product._id)).unwrap();
+                  console.log("Delete result:", result);
+                  
+                  if (result.success) {
+                    toast.success(`✅ "${product.name}" deleted successfully!`, { 
+                      id: deletingToast,
+                      duration: 3000 
+                    });
+                  } else {
+                    toast.error("Failed to delete product", { id: deletingToast });
+                  }
                 } catch (err) {
-                  toast.error(err?.message || "Failed to delete product");
+                  console.error("Delete error:", err);
+                  toast.error(err?.message || "Failed to delete product", { id: deletingToast });
+                } finally {
+                  setIsDeleting(false);
                 }
               }}
             >
-              Yes, Delete
+              <Trash2 size={16} />
+              Yes, Delete Permanently
             </button>
           </div>
         </div>
@@ -145,9 +171,12 @@ const ProductCard = ({ product }) => {
   };
 
   const handleImageClick = (e) => {
-    e.stopPropagation(); // Prevent double navigation
+    e.stopPropagation();
     setIsModalOpen(true);
   };
+
+  // If product is null or undefined, don't render
+  if (!product) return null;
 
   return (
     <>
@@ -171,19 +200,21 @@ const ProductCard = ({ product }) => {
                 to={`/admin/edit-product/${product._id}`}
                 onClick={(e) => e.stopPropagation()}
                 className="p-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-transform hover:scale-110"
+                title="Edit product"
               >
                 <Edit2 size={18} />
               </Link>
               <button
                 onClick={handleDelete}
-                className="p-3 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-transform hover:scale-110"
+                disabled={isDeleting}
+                className="p-3 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-transform hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Delete product permanently"
               >
                 <Trash2 size={18} />
               </button>
             </div>
           )}
 
-          {/* Like Button - Always visible */}
           <button
             onClick={handleLike}
             className="absolute top-4 right-4 p-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-full shadow-md z-10 flex items-center gap-1 hover:scale-110 transition-transform"
@@ -196,7 +227,6 @@ const ProductCard = ({ product }) => {
                   : "text-gray-400 dark:text-gray-500"
               }
             />
-            {/* Like Count - Always visible to everyone */}
             <span className="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[20px]">
               {likeCount > 0 ? likeCount : ""}
             </span>
@@ -204,7 +234,6 @@ const ProductCard = ({ product }) => {
         </div>
 
         <div className="p-6 flex flex-col flex-grow">
-          {/* Creator Info */}
           {product.user && (
             <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
               <User size={14} />
