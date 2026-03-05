@@ -1,4 +1,6 @@
+// client/src/components/Navbar.jsx
 import {
+  BarChart3,
   LogOut,
   Menu,
   Moon,
@@ -64,7 +66,11 @@ const Navbar = () => {
               to="/"
               className="text-2xl font-black text-blue-600 tracking-tighter flex items-center gap-2"
             >
-              <img className="logo-img w-12 h-12 rounded-full object-cover" src={logos} alt="MyStore Logo" />
+              <img
+                className="logo-img w-12 h-12 rounded-full object-cover"
+                src={logos}
+                alt="MyStore Logo"
+              />
               MY<span className="text-gray-800 dark:text-white">STORE</span>
             </Link>
           </div>
@@ -88,7 +94,6 @@ const Navbar = () => {
               </Link>
             </>
           ) : (
-            /* Show minimal links for non-logged in users */
             <>
               <Link to="/" className="hover:text-blue-600 transition">
                 Home
@@ -169,7 +174,7 @@ const Navbar = () => {
                       </p>
                     </div>
 
-                    {/* Menu Items */}
+                    {/* Menu Items - Common for all users */}
                     <Link
                       to="/my-orders"
                       onClick={() => setIsProfileOpen(false)}
@@ -178,6 +183,7 @@ const Navbar = () => {
                       <ShoppingCart size={18} /> My Orders
                     </Link>
 
+                    {/* Admin Only Menu Items */}
                     {user.role === "admin" && (
                       <>
                         <Link
@@ -199,11 +205,19 @@ const Navbar = () => {
                           onClick={() => setIsProfileOpen(false)}
                           className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition text-sm font-semibold"
                         >
-                          <Package size={18} /> Zero Stock Products
+                          <Package size={18} /> Zero Stock
+                        </Link>
+                        <Link
+                          to="/admin/analytics"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-sm font-semibold"
+                        >
+                          <BarChart3 size={18} /> Analytics
                         </Link>
                       </>
                     )}
 
+                    {/* Logout Button */}
                     <button
                       onClick={handleLogout}
                       className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition text-sm font-semibold border-t dark:border-gray-700"
@@ -229,6 +243,7 @@ const Navbar = () => {
       {isOpen && (
         <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 py-4 px-4 shadow-lg">
           <div className="flex flex-col space-y-2">
+            {/* Home Link - Always visible */}
             <Link
               to="/"
               className="block py-2 px-4 font-bold dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
@@ -237,6 +252,7 @@ const Navbar = () => {
               Home
             </Link>
 
+            {/* Logged In User Links */}
             {user ? (
               <>
                 <Link
@@ -261,6 +277,7 @@ const Navbar = () => {
                   Contact
                 </Link>
 
+                {/* Admin Mobile Menu Section */}
                 {user.role === "admin" && (
                   <>
                     <div className="border-t dark:border-gray-700 my-2 pt-2">
@@ -286,15 +303,21 @@ const Navbar = () => {
                         className="block py-2 px-4 font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
                         onClick={() => setIsOpen(false)}
                       >
-                        Zero Stock Products
+                        Zero Stock
                       </Link>
-
-                      <Link to="/admin/analytics" onClick={() => setIsProfileOpen(false)}className="flex items-center gap-3 px-4 py-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-sm font-semibold"><BarChart3 size={18} /> Analytics</Link>
+                      <Link
+                        to="/admin/analytics"
+                        className="block py-2 px-4 font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        Analytics
+                      </Link>
                     </div>
                   </>
                 )}
               </>
             ) : (
+              /* Guest User Links */
               <>
                 <Link
                   to="/about"
@@ -306,7 +329,7 @@ const Navbar = () => {
               </>
             )}
 
-            {/* Cart link in mobile menu */}
+            {/* Cart link in mobile menu - Always visible */}
             <Link
               to="/cart"
               className="block py-2 px-4 font-bold dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition flex items-center justify-between"

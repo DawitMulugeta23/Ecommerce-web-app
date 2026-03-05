@@ -7,7 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { ThemeProvider } from "./context/ThemeContext";
 import About from "./pages/About";
 import AdminAddProduct from "./pages/AdminAddProduct";
-import AdminAnalytics from "./pages/AdminAnalytics";
+import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminEditProduct from "./pages/AdminEditProduct";
 import Cart from "./pages/Cart";
@@ -20,7 +20,6 @@ import ProductDetails from "./pages/ProductDetails";
 import Register from "./pages/Register";
 import Success from "./pages/Success";
 import ZeroStockProducts from "./pages/ZeroStockProducts";
-import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
 
 function App() {
   return (
@@ -40,8 +39,8 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/cart" element={<Cart />} />
-              <Route path="/admin/analytics" element={<ProtectedRoute isAdmin={true}><AdminAnalyticsPage /></ProtectedRoute>}/>
-              {/* Protected Routes */}
+
+              {/* Protected Routes (User only) */}
               <Route
                 path="/my-orders"
                 element={
@@ -80,7 +79,7 @@ function App() {
                 path="/admin/analytics"
                 element={
                   <ProtectedRoute isAdmin={true}>
-                    <AdminAnalytics />
+                    <AdminAnalyticsPage />
                   </ProtectedRoute>
                 }
               />
