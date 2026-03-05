@@ -288,6 +288,8 @@ const Navbar = () => {
                       >
                         Zero Stock Products
                       </Link>
+
+                      <Link to="/admin/analytics" onClick={() => setIsProfileOpen(false)}className="flex items-center gap-3 px-4 py-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-sm font-semibold"><BarChart3 size={18} /> Analytics</Link>
                     </div>
                   </>
                 )}

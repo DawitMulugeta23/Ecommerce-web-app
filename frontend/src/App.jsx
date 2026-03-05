@@ -20,6 +20,7 @@ import ProductDetails from "./pages/ProductDetails";
 import Register from "./pages/Register";
 import Success from "./pages/Success";
 import ZeroStockProducts from "./pages/ZeroStockProducts";
+import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
 
 function App() {
   return (
@@ -39,7 +40,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/cart" element={<Cart />} />
-              
+              <Route path="/admin/analytics" element={<ProtectedRoute isAdmin={true}><AdminAnalyticsPage /></ProtectedRoute>}/>
               {/* Protected Routes */}
               <Route
                 path="/my-orders"
