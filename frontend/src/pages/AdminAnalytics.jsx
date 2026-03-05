@@ -1,4 +1,4 @@
-// client/src/pages/AdminAnalytics.jsx (fixed version - removed unused user)
+// client/src/pages/AdminAnalytics.jsx
 import {
   AlertTriangle,
   DollarSign,
@@ -6,7 +6,6 @@ import {
   Package,
   ShoppingBag,
   Star,
-  TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -26,6 +25,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import SalesAnalytics from "../components/SalesAnalytics";
 import API from "../services/api";
 
 const COLORS = [
@@ -38,7 +38,6 @@ const COLORS = [
 ];
 
 const AdminAnalytics = () => {
-  // Removed unused 'user' variable
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [timeRange, setTimeRange] = useState("30days");
@@ -195,8 +194,15 @@ const AdminAnalytics = () => {
           </div>
         </div>
 
+        {/* Sales Analytics Component */}
+        <SalesAnalytics
+          weeklyData={data.weeklySales || []}
+          dailyData={data.dailySales || []}
+          monthlyData={data.monthlySales || []}
+        />
+
         {/* Custom Chart Configuration */}
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 mb-8">
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 mt-8">
           <h2 className="text-xl font-bold mb-4 dark:text-white">
             Custom Chart Configuration
           </h2>
@@ -366,7 +372,7 @@ const AdminAnalytics = () => {
           <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2 dark:text-white">
               <TrendingUp className="text-green-500" size={20} />
-              High Demand Products (በከፍተኛ ፍላጎት ላይ ያሉ)
+              High Demand Products
             </h3>
             <div className="space-y-4">
               {data.highDemandProducts?.map((product) => (
@@ -400,7 +406,7 @@ const AdminAnalytics = () => {
           <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2 dark:text-white">
               <AlertTriangle className="text-orange-500" size={20} />
-              Low Stock Products (በክምችት ውስጥ ያሉ አነስተኛ)
+              Low Stock Products
             </h3>
             <div className="space-y-4">
               {data.lowStockProducts?.map((product) => (
@@ -434,14 +440,14 @@ const AdminAnalytics = () => {
             </div>
           </div>
 
-          {/* Not Selling Products */}
+          {/* Top Rated Products */}
           <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2 dark:text-white">
-              <TrendingDown className="text-red-500" size={20} />
-              Not Selling (ለሽያጭ ያልበቁ)
+              <Star className="text-yellow-500 fill-yellow-500" size={20} />
+              Top Rated Products
             </h3>
             <div className="space-y-4">
-              {data.notSellingProducts?.map((product) => (
+              {data.topRatedProducts?.map((product) => (
                 <div
                   key={product._id}
                   className="flex items-center justify-between"
@@ -449,62 +455,21 @@ const AdminAnalytics = () => {
                   <div>
                     <p className="font-bold dark:text-white">{product.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Added: {new Date(product.createdAt).toLocaleDateString()}
+                      Rating: {product.rating?.toFixed(1) || 0} ★
                     </p>
                   </div>
-                  <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full text-sm font-bold">
-                    {product.countInStock} in stock
+                  <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-sm font-bold">
+                    {product.price} ETB
                   </span>
                 </div>
               ))}
-              {(!data.notSellingProducts ||
-                data.notSellingProducts.length === 0) && (
+              {(!data.topRatedProducts ||
+                data.topRatedProducts.length === 0) && (
                 <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-                  All products are selling
+                  No rated products yet
                 </p>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* Top Rated Products */}
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 mb-8">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 dark:text-white">
-            <Star className="text-yellow-500 fill-yellow-500" size={20} />
-            Top Rated Products
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {data.topRatedProducts?.map((product) => (
-              <div key={product._id} className="text-center">
-                <div className="mb-2">
-                  <div className="flex justify-center">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        size={16}
-                        className={`${
-                          star <= Math.round(product.rating || 0)
-                            ? "fill-yellow-400 text-yellow-400"
-                            : "text-gray-300 dark:text-gray-600"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {product.numReviews || 0} reviews
-                  </p>
-                </div>
-                <p className="font-bold text-sm dark:text-white truncate">
-                  {product.name}
-                </p>
-                <p className="text-blue-600 font-bold">{product.price} ETB</p>
-              </div>
-            ))}
-            {(!data.topRatedProducts || data.topRatedProducts.length === 0) && (
-              <p className="text-gray-500 dark:text-gray-400 col-span-5 text-center py-4">
-                No rated products yet
-              </p>
-            )}
           </div>
         </div>
 
