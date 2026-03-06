@@ -63,7 +63,7 @@ const Checkout = () => {
   const { user } = useSelector((state) => state.auth);
   const { isDarkMode } = useTheme();
 
-  const [selectedMethod, setSelectedMethod] = useState("demo"); // Default to demo for testing
+  const [selectedMethod, setSelectedMethod] = useState("demo");
   const [selectedChapaMethod, setSelectedChapaMethod] = useState("card");
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -169,7 +169,7 @@ const Checkout = () => {
     return true;
   };
 
-  // Handle Demo Payment
+  // Handle Demo Payment - NOW SAVES TO DATABASE
   const handleDemoPayment = async () => {
     if (!user) {
       toast.error("Please login first");
@@ -189,10 +189,10 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      // Simulate payment processing delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Generate a demo transaction reference
+      const tx_ref = `DEMO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-      // Create demo order data
+      // Create demo order data to send to backend
       const demoOrderData = {
         amount: checkoutTotal,
         email: formData.email,
@@ -201,30 +201,37 @@ const Checkout = () => {
         phone: formData.phone,
         address: formData.address,
         city: formData.city,
+        tx_ref,
         items: checkoutItems,
         payment_method: "demo",
         isDemo: true,
       };
 
-      // Clear the cart
-      dispatch(clearCart());
+      // Send to backend to create order in database
+      const response = await API.post(
+        "/payments/demo/initialize",
+        demoOrderData,
+      );
 
-      // Show success message
-      toast.success("Demo payment successful! 🎉");
+      if (response.data.success) {
+        // Clear the cart
+        dispatch(clearCart());
 
-      // Generate a fake order ID for demo
-      const demoOrderId = `DEMO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        toast.success("Demo payment successful! 🎉");
 
-      // Navigate to success page with demo data
-      navigate(`/order-success/${demoOrderId}`, {
-        state: {
-          isDemo: true,
-          orderDetails: demoOrderData,
-        },
-      });
+        // Navigate to success page with the real order ID from database
+        navigate(`/order-success/${response.data.orderId}`, {
+          state: {
+            isDemo: true,
+            orderDetails: response.data.order,
+          },
+        });
+      }
     } catch (err) {
       console.error("Demo payment error:", err);
-      toast.error("Demo payment failed. Please try again.");
+      toast.error(
+        err.response?.data?.message || "Demo payment failed. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -329,13 +336,13 @@ const Checkout = () => {
           </p>
           <div className="bg-white dark:bg-gray-800 p-3 rounded-lg">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-              📝 Demo Order Summary:
+              📝 Demo Order will be saved to your orders:
             </p>
             <p className="text-sm font-bold text-gray-800 dark:text-white">
               Total: {checkoutTotal} ETB
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              This is for testing purposes only.
+              This order will appear in "My Orders" page.
             </p>
           </div>
         </div>
@@ -641,7 +648,7 @@ const Checkout = () => {
                     </span>
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Test the checkout flow without real payment
+                    Test the checkout flow (order will be saved)
                   </p>
                 </div>
               </label>
@@ -754,8 +761,8 @@ const Checkout = () => {
             {/* Demo Mode Notice */}
             <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <p className="text-xs text-yellow-700 dark:text-yellow-400 text-center">
-                🧪 Demo Mode Available - Use "Demo Payment" for testing without
-                real money
+                🧪 Demo orders are saved to database and will appear in your
+                order history
               </p>
             </div>
           </div>
