@@ -276,10 +276,10 @@ const AdminAnalyticsPage = () => {
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center">
-                <DollarSign
+                <span
                   className="text-green-600 dark:text-green-400"
-                  size={24}
-                />
+                  size={24}>
+                 Birr</span>
               </div>
             </div>
           </div>
