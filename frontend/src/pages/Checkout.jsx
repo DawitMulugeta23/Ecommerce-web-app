@@ -208,10 +208,7 @@ const Checkout = () => {
       };
 
       // Send to backend to create order in database
-      const response = await API.post(
-        "/payments/demo/initialize",
-        demoOrderData,
-      );
+      const response = await API.post("/payments/demo/initialize", demoOrderData);
 
       if (response.data.success) {
         // Clear the cart
@@ -229,9 +226,7 @@ const Checkout = () => {
       }
     } catch (err) {
       console.error("Demo payment error:", err);
-      toast.error(
-        err.response?.data?.message || "Demo payment failed. Please try again.",
-      );
+      toast.error(err.response?.data?.message || "Demo payment failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -331,8 +326,7 @@ const Checkout = () => {
             </h3>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            This is a demo payment. No real money will be charged. Click "Pay
-            with Demo" to simulate a successful payment.
+            This is a demo payment. No real money will be charged. Click "Pay with Demo" to simulate a successful payment.
           </p>
           <div className="bg-white dark:bg-gray-800 p-3 rounded-lg">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
@@ -761,8 +755,7 @@ const Checkout = () => {
             {/* Demo Mode Notice */}
             <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <p className="text-xs text-yellow-700 dark:text-yellow-400 text-center">
-                🧪 Demo orders are saved to database and will appear in your
-                order history
+                🧪 Demo orders are saved to database and will appear in your order history
               </p>
             </div>
           </div>

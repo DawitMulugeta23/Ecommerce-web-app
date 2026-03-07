@@ -18,14 +18,14 @@ const orderSchema = new mongoose.Schema(
       },
     ],
     shippingAddress: {
-      address: { type: String },
-      city: { type: String },
-      phone: { type: String },
+      address: { type: String, required: true },
+      city: { type: String, required: true },
+      phone: { type: String, required: true },
     },
     totalPrice: { type: Number, required: true },
     paymentMethod: {
       type: String,
-      enum: ["chapa"],
+      enum: ["chapa", "demo"],
       required: true,
     },
     paymentResult: {

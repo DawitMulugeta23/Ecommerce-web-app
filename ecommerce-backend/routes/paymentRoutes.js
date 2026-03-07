@@ -9,6 +9,7 @@ import {
   getPaymentMethods,
   getUserOrders,
   initializeChapaPayment,
+  initializeDemoPayment,
   updateOrderStatus,
   verifyPayment,
 } from "../controllers/paymentController.js";
@@ -20,6 +21,9 @@ const router = express.Router();
 router.get("/methods", getPaymentMethods);
 router.get("/verify/:tx_ref", verifyPayment);
 router.post("/webhook", chapaWebhook);
+
+// Demo payment route (protected)
+router.post("/demo/initialize", protect, initializeDemoPayment);
 
 // Protected user routes
 router.get("/orders", protect, getUserOrders);

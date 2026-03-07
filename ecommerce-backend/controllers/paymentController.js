@@ -4,6 +4,95 @@ import Cart from "../models/Cart.js";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 
+// @desc    Initialize Demo Payment (Save to Database)
+// @route   POST /api/payments/demo/initialize
+// @access  Private
+export const initializeDemoPayment = async (req, res) => {
+  try {
+    const {
+      amount,
+      email,
+      firstName,
+      lastName,
+      phone,
+      address,
+      city,
+      tx_ref,
+      items,
+    } = req.body;
+
+    console.log("🎮 Processing demo payment for user:", req.user._id);
+
+    // Create order in database with customer info - mark as paid immediately
+    const order = await Order.create({
+      user: req.user._id,
+      orderItems: items.map((item) => ({
+        product: item._id || item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        image: item.image,
+      })),
+      totalPrice: amount,
+      paymentMethod: "demo",
+      paymentResult: {
+        tx_ref,
+        status: "success",
+        method: "demo",
+        customer: {
+          email,
+          phone,
+          address,
+          city,
+        },
+      },
+      shippingAddress: {
+        address,
+        city,
+        phone,
+      },
+      isPaid: true,
+      paidAt: Date.now(),
+      orderStatus: "processing", // Start processing immediately for demo
+    });
+
+    console.log("✅ Demo order created in database:", order._id);
+
+    // Update product stock (reduce inventory)
+    for (const item of items) {
+      await Product.findByIdAndUpdate(item._id || item.id, {
+        $inc: { countInStock: -item.quantity },
+      });
+      console.log(`📦 Updated stock for product ${item.name}`);
+    }
+
+    // Clear user's cart
+    await Cart.findOneAndUpdate(
+      { user: req.user._id },
+      { $set: { cartItems: [] } },
+    );
+    console.log("🗑️ Cart cleared for user");
+
+    // Populate order items for response
+    const populatedOrder = await Order.findById(order._id)
+      .populate("orderItems.product")
+      .populate("user", "name email");
+
+    res.json({
+      success: true,
+      message: "Demo payment successful! Order created.",
+      orderId: order._id,
+      order: populatedOrder,
+    });
+  } catch (error) {
+    console.error("❌ Demo payment error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to process demo payment: " + error.message,
+    });
+  }
+};
+
 // @desc    Initialize Chapa Payment
 // @route   POST /api/payments/chapa/initialize
 // @access  Private
@@ -117,6 +206,9 @@ export const initializeChapaPayment = async (req, res) => {
   }
 };
 
+// @desc    Delete Order (Admin only)
+// @route   DELETE /api/payments/orders/:id
+// @access  Private/Admin
 export const deleteOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -207,7 +299,9 @@ export const cancelOrder = async (req, res) => {
   }
 };
 
-// Rest of your existing functions remain the same...
+// @desc    Verify Payment
+// @route   GET /api/payments/verify/:tx_ref
+// @access  Public
 export const verifyPayment = async (req, res) => {
   try {
     const { tx_ref } = req.params;
@@ -311,6 +405,13 @@ export const getPaymentMethods = async (req, res) => {
         description: "Pay with Card, Telebirr, CBE Birr via Chapa",
         enabled: true,
       },
+      {
+        id: "demo",
+        name: "Demo Payment",
+        icon: "🧪",
+        description: "Test payment (order saved to database)",
+        enabled: true,
+      },
     ];
     res.json({ methods });
   } catch (error) {
@@ -376,6 +477,9 @@ export const getAllOrders = async (req, res) => {
   }
 };
 
+// @desc    Update Order Status (Admin only)
+// @route   PUT /api/payments/orders/:id/status
+// @access  Private/Admin
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;

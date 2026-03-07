@@ -2,13 +2,15 @@
 import { CheckCircle, Loader2, Sparkles, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { clearCart } from "../features/cart/cartSlice";
 import API from "../services/api";
 
 const Success = () => {
   const [status, setStatus] = useState("verifying");
+  const [order, setOrder] = useState(null);
   const [searchParams] = useSearchParams();
+  const { id } = useParams(); // Get order ID from URL
   const location = useLocation();
   const dispatch = useDispatch();
 
@@ -17,68 +19,82 @@ const Success = () => {
   const orderDetails = location.state?.orderDetails;
 
   useEffect(() => {
-    let isMounted = true; // To prevent state updates if component unmounts
+    let isMounted = true;
 
-    const handleDemoPayment = () => {
-      if (isMounted) {
-        setStatus("success");
-        dispatch(clearCart());
-      }
-    };
-
-    const verifyRealPayment = async () => {
-      if (!tx_ref) {
-        if (isMounted) setStatus("error");
+    const verifyOrder = async () => {
+      // If we have order details from state (demo payment), use those
+      if (orderDetails) {
+        if (isMounted) {
+          setOrder(orderDetails);
+          setStatus("success");
+          dispatch(clearCart());
+        }
         return;
       }
 
-      try {
-        const { data } = await API.get(`/payments/verify/${tx_ref}`);
-
-        if (isMounted) {
-          if (data.data.status === "success") {
-            setStatus("success");
-            dispatch(clearCart());
-          } else {
-            setStatus("error");
+      // If we have an order ID from URL params, fetch it
+      if (id) {
+        try {
+          const { data } = await API.get(`/payments/orders/${id}`);
+          if (isMounted) {
+            setOrder(data);
+            setStatus(data.isPaid ? "success" : "pending");
+            if (data.isPaid) {
+              dispatch(clearCart());
+            }
           }
+        } catch (err) {
+          console.error("Error fetching order:", err);
+          if (isMounted) setStatus("error");
         }
-      } catch (err) {
-        console.error("Verification Error:", err);
+        return;
+      }
+
+      // Fallback to tx_ref verification
+      if (tx_ref) {
+        try {
+          const { data } = await API.get(`/payments/verify/${tx_ref}`);
+          if (isMounted) {
+            if (data.data?.status === "success") {
+              setStatus("success");
+              dispatch(clearCart());
+            } else {
+              setStatus("error");
+            }
+          }
+        } catch (err) {
+          console.error("Verification Error:", err);
+          if (isMounted) setStatus("error");
+        }
+      } else {
         if (isMounted) setStatus("error");
       }
     };
 
-    // Handle payment verification based on type
-    if (isDemo) {
-      handleDemoPayment();
-    } else {
-      verifyRealPayment();
-    }
+    verifyOrder();
 
-    // Cleanup function to prevent state updates on unmounted component
     return () => {
       isMounted = false;
     };
-  }, [tx_ref, dispatch, isDemo]); // Dependencies array
+  }, [tx_ref, id, dispatch, orderDetails]);
 
   // Loading state
-  if (status === "verifying" && !isDemo) {
+  if (status === "verifying") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] bg-gray-50 dark:bg-gray-950 px-4">
         <Loader2 className="w-16 h-16 text-blue-600 animate-spin mb-4" />
         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-          ክፍያዎን በማረጋገጥ ላይ ነን...
+          Verifying your order...
         </h2>
         <p className="text-gray-500 dark:text-gray-400">
-          እባክዎ ለጥቂት ሰከንዶች ይጠብቁ።
+          Please wait a moment.
         </p>
       </div>
     );
   }
 
   // Demo success state
-  if (isDemo && status === "success") {
+  if (isDemo && status === "success" && order) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] bg-gray-50 dark:bg-gray-950 px-4">
         <div className="relative">
@@ -92,31 +108,28 @@ const Success = () => {
           This was a demo transaction. No real money was charged.
         </p>
 
-        {orderDetails && (
-          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl mb-8 max-w-md w-full">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Demo Order Summary:
+        <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-xl mb-8 max-w-md w-full">
+          <h3 className="font-bold text-lg mb-3 text-gray-800 dark:text-white">
+            Order Details
+          </h3>
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="font-bold">Order ID:</span> #{order._id?.slice(-8) || "N/A"}
             </p>
-            <div className="space-y-1">
-              <p className="text-sm text-gray-800 dark:text-white">
-                <span className="font-bold">Total:</span> {orderDetails.amount}{" "}
-                ETB
-              </p>
-              <p className="text-sm text-gray-800 dark:text-white">
-                <span className="font-bold">Items:</span>{" "}
-                {orderDetails.items?.length || 0}
-              </p>
-              <p className="text-sm text-gray-800 dark:text-white">
-                <span className="font-bold">Customer:</span>{" "}
-                {orderDetails.firstName} {orderDetails.lastName}
-              </p>
-            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="font-bold">Total:</span> {order.totalPrice} ETB
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="font-bold">Items:</span> {order.orderItems?.length || 0}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="font-bold">Status:</span> {order.orderStatus}
+            </p>
           </div>
-        )}
+        </div>
 
         <p className="text-gray-600 dark:text-gray-400 mb-8 text-center max-w-md">
-          Thank you for testing our demo! You can continue shopping or place a
-          real order.
+          Thank you for testing our demo! Your order has been saved to your order history.
         </p>
 
         <div className="flex flex-wrap gap-4 justify-center">
@@ -148,12 +161,20 @@ const Success = () => {
         <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 text-center max-w-md">
           ክፍያዎ በተሳካ ሁኔታ ተፈጽሟል። ትዕዛዝዎ አሁን እየተዘጋጀ ነው።
         </p>
-        <Link
-          to="/"
-          className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200"
-        >
-          ወደ ገበያ ተመለስ
-        </Link>
+        <div className="flex flex-wrap gap-4 justify-center">
+          <Link
+            to="/my-orders"
+            className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg"
+          >
+            View My Orders
+          </Link>
+          <Link
+            to="/"
+            className="bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-8 py-3 rounded-xl font-bold hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+          >
+            Continue Shopping
+          </Link>
+        </div>
       </div>
     );
   }
