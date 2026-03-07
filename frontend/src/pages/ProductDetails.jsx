@@ -1,5 +1,5 @@
 // client/src/pages/ProductDetails.jsx
-import { Heart, ShoppingCart, Trash2 } from "lucide-react";
+import { Heart, Package, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
@@ -122,8 +122,7 @@ const ProductDetail = () => {
     }
   };
 
-  // client/src/pages/ProductDetails.jsx - Fixed line 180
-const handleDelete = async () => {
+  const handleDelete = async () => {
     if (!user || user.role !== "admin") return;
 
     toast(
@@ -150,7 +149,7 @@ const handleDelete = async () => {
                   navigate("/");
                 } catch (err) {
                   toast.error("Failed to delete product");
-                  console.error(err.message); // Fixed: was console.err
+                  console.error(err.message);
                 }
               }}
             >
@@ -165,25 +164,6 @@ const handleDelete = async () => {
       },
     );
   };
-  {product && (
-    <CommentSection
-      productId={product._id}
-      onCommentUpdate={() => {
-        // Refresh product data to update rating
-        const refreshProduct = async () => {
-          try {
-            const { data } = await API.get(`/products/${id}`);
-            setProduct(data);
-            setLikeCount(data.likeCount || 0);
-          } catch (err) {
-            toast.error("Failed to refresh product");
-            console.error(err.message); // Fixed: was console.err
-          }
-        };
-        refreshProduct();
-      }}
-    />
-  )}
 
   const incrementQuantity = () => {
     if (product && quantity < product.countInStock) {
@@ -281,21 +261,60 @@ const handleDelete = async () => {
             </p>
 
             <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex items-center gap-3 mb-6">
-                <div
-                  className={`h-3 w-3 rounded-full ${
-                    product.countInStock > 0 ? "bg-green-500" : "bg-red-500"
-                  }`}
-                ></div>
-                <p
-                  className={`font-bold text-lg ${
-                    product.countInStock > 0 ? "text-green-600" : "text-red-500"
-                  }`}
-                >
-                  {product.countInStock > 0
-                    ? `${product.countInStock} items in stock`
-                    : "Out of stock!"}
-                </p>
+              {/* Stock Information - Detailed for all users */}
+              <div className="mb-6 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Package size={20} className="text-blue-600" />
+                    <span className="font-bold text-gray-700 dark:text-gray-300">
+                      Available Stock
+                    </span>
+                  </div>
+                  <span
+                    className={`text-2xl font-black ${
+                      product.countInStock > 10
+                        ? "text-green-600"
+                        : product.countInStock > 0
+                          ? "text-orange-600"
+                          : "text-red-600"
+                    }`}
+                  >
+                    {product.countInStock}
+                  </span>
+                </div>
+
+                {/* Stock Progress Bar */}
+                <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+                  <div
+                    className={`h-full rounded-full ${
+                      product.countInStock > 10
+                        ? "bg-green-500"
+                        : product.countInStock > 0
+                          ? "bg-orange-500"
+                          : "bg-red-500"
+                    }`}
+                    style={{
+                      width: `${Math.min((product.countInStock / 100) * 100, 100)}%`,
+                    }}
+                  ></div>
+                </div>
+
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {product.countInStock > 50
+                      ? "High stock"
+                      : product.countInStock > 20
+                        ? "Medium stock"
+                        : product.countInStock > 0
+                          ? "Low stock - Order soon!"
+                          : "Out of stock"}
+                  </span>
+                  {product.countInStock < 10 && product.countInStock > 0 && (
+                    <span className="text-orange-600 font-bold animate-pulse">
+                      Only {product.countInStock} left!
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Quantity Selector */}
@@ -382,9 +401,8 @@ const handleDelete = async () => {
                   setProduct(data);
                   setLikeCount(data.likeCount || 0);
                 } catch (err) {
-                  toast.error("Failed to refresh product")
+                  toast.error("Failed to refresh product");
                   console.error(err.message);
-                  
                 }
               };
               refreshProduct();
