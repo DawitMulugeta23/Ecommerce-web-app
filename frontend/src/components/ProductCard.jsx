@@ -4,6 +4,7 @@ import {
   Edit2,
   Eye,
   Heart,
+  Package,
   ShoppingCart,
   Trash2,
   User,
@@ -105,14 +106,16 @@ const ProductCard = ({ product }) => {
 
   const handleDelete = async (e) => {
     e.stopPropagation();
-    
+
     if (isDeleting) return;
-    
+
     toast(
       (t) => (
         <div className="flex flex-col gap-3 p-2">
           <p className="font-bold text-red-600 text-lg">⚠️ Permanent Delete</p>
-          <p className="text-gray-800 dark:text-gray-200">Are you sure you want to permanently delete "{product.name}"?</p>
+          <p className="text-gray-800 dark:text-gray-200">
+            Are you sure you want to permanently delete "{product.name}"?
+          </p>
           <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-sm">
             <p className="font-bold mb-1">This will:</p>
             <ul className="list-disc pl-4 space-y-1 text-gray-600 dark:text-gray-400">
@@ -134,24 +137,33 @@ const ProductCard = ({ product }) => {
               onClick={async () => {
                 toast.dismiss(t.id);
                 setIsDeleting(true);
-                
+
                 const deletingToast = toast.loading("Deleting product...");
-                
+
                 try {
-                  const result = await dispatch(deleteProduct(product._id)).unwrap();
+                  const result = await dispatch(
+                    deleteProduct(product._id),
+                  ).unwrap();
                   console.log("Delete result:", result);
-                  
+
                   if (result.success) {
-                    toast.success(`✅ "${product.name}" deleted successfully!`, { 
-                      id: deletingToast,
-                      duration: 3000 
-                    });
+                    toast.success(
+                      `✅ "${product.name}" deleted successfully!`,
+                      {
+                        id: deletingToast,
+                        duration: 3000,
+                      },
+                    );
                   } else {
-                    toast.error("Failed to delete product", { id: deletingToast });
+                    toast.error("Failed to delete product", {
+                      id: deletingToast,
+                    });
                   }
                 } catch (err) {
                   console.error("Delete error:", err);
-                  toast.error(err?.message || "Failed to delete product", { id: deletingToast });
+                  toast.error(err?.message || "Failed to delete product", {
+                    id: deletingToast,
+                  });
                 } finally {
                   setIsDeleting(false);
                 }
@@ -194,8 +206,24 @@ const ProductCard = ({ product }) => {
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
 
+          {/* Stock Badge - Visible to all users */}
+          <div className="absolute top-4 left-4 z-10">
+            <div
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg ${
+                product.countInStock > 10
+                  ? "bg-green-500 text-white"
+                  : product.countInStock > 0
+                    ? "bg-orange-500 text-white"
+                    : "bg-red-500 text-white"
+              }`}
+            >
+              <Package size={14} />
+              <span>Available: {product.countInStock}</span>
+            </div>
+          </div>
+
           {user && user.role === "admin" && (
-            <div className="absolute top-4 left-4 flex gap-2 z-20">
+            <div className="absolute top-4 right-20 flex gap-2 z-20">
               <Link
                 to={`/admin/edit-product/${product._id}`}
                 onClick={(e) => e.stopPropagation()}
@@ -252,7 +280,7 @@ const ProductCard = ({ product }) => {
             {product.name}
           </h3>
 
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-4">
             <span className="text-3xl font-black text-gray-900 dark:text-white">
               {product.price}{" "}
               <span className="text-sm font-normal text-gray-500 uppercase">
@@ -264,6 +292,40 @@ const ProductCard = ({ product }) => {
                 {product.oldPrice} ETB
               </del>
             )}
+          </div>
+
+          {/* Stock Status Bar - Visual indicator for all users */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center text-xs mb-1">
+              <span className="text-gray-500 dark:text-gray-400">
+                Availability
+              </span>
+              <span
+                className={`font-bold ${
+                  product.countInStock > 10
+                    ? "text-green-600 dark:text-green-400"
+                    : product.countInStock > 0
+                      ? "text-orange-600 dark:text-orange-400"
+                      : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {product.countInStock} units
+              </span>
+            </div>
+            <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  product.countInStock > 10
+                    ? "bg-green-500"
+                    : product.countInStock > 0
+                      ? "bg-orange-500"
+                      : "bg-red-500"
+                }`}
+                style={{
+                  width: `${Math.min((product.countInStock / 50) * 100, 100)}%`,
+                }}
+              ></div>
+            </div>
           </div>
 
           <div className="flex gap-2 mt-auto">
