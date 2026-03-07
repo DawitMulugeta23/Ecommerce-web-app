@@ -1,4 +1,5 @@
-import { Minus, Plus, Trash2 } from "lucide-react";
+// client/src/components/CartItem.jsx
+import { Minus, Package, Plus, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -71,9 +72,24 @@ const CartItem = ({ item }) => {
           <p className="text-blue-600 dark:text-blue-400 font-semibold">
             {item.price} ETB
           </p>
+
+          {/* Stock information in cart */}
+          <div className="flex items-center gap-1 mt-1">
+            <Package size={14} className="text-gray-400" />
+            <span
+              className={`text-xs ${
+                item.countInStock < 5
+                  ? "text-orange-500 font-bold"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              Available: {item.countInStock}
+            </span>
+          </div>
+
           {item.countInStock < 5 && (
-            <p className="text-xs text-orange-500">
-              Only {item.countInStock} left in stock
+            <p className="text-xs text-orange-500 font-bold animate-pulse">
+              Only {item.countInStock} left in stock!
             </p>
           )}
         </div>

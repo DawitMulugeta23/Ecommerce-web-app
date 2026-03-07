@@ -1,35 +1,67 @@
-import { Filter, LayoutGrid, Search } from "lucide-react";
+// client/src/components/ProductList.jsx
+import { Filter, LayoutGrid, Package, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProducts } from "../features/products/productSlice";
 import ProductCard from "./ProductCard";
 
-const CATEGORIES = ["Electronics", "Clothing", "Shoes", "Home & Kitchen", "Beauty", "Sports", "Other"];
+const CATEGORIES = [
+  "Electronics",
+  "Clothing",
+  "Shoes",
+  "Home & Kitchen",
+  "Beauty",
+  "Sports",
+  "Other",
+];
 
 const ProductList = () => {
   const dispatch = useDispatch();
   const { items, status } = useSelector((state) => state.products);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [stockFilter, setStockFilter] = useState("all"); // all, inStock, lowStock
 
   useEffect(() => {
     dispatch(fetchProducts());
   }, [dispatch]);
 
   const filteredItems = items.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesSearch = product.name
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "" || product.category === selectedCategory;
+
+    // Stock filter
+    let matchesStock = true;
+    if (stockFilter === "inStock") {
+      matchesStock = product.countInStock > 0;
+    } else if (stockFilter === "lowStock") {
+      matchesStock = product.countInStock > 0 && product.countInStock < 10;
+    }
+
+    return matchesSearch && matchesCategory && matchesStock;
   });
+
+  // Calculate stock statistics
+  const totalProducts = items.length;
+  const inStockProducts = items.filter((p) => p.countInStock > 0).length;
+  const lowStockProducts = items.filter(
+    (p) => p.countInStock > 0 && p.countInStock < 10,
+  ).length;
+  const outOfStockProducts = items.filter((p) => p.countInStock === 0).length;
 
   return (
     <div className="w-full bg-gray-50 dark:bg-gray-950 min-h-screen transition-colors duration-300">
-      
       {/* 🟢 Sticky Header - Full Width */}
       <div className="sticky top-20 z-40 w-full bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800 px-4 md:px-6 py-4">
         <div className="max-w-[1800px] mx-auto flex flex-col md:flex-row items-center gap-4">
           <div className="hidden lg:flex items-center gap-2 shrink-0">
-            <LayoutGrid className="text-blue-600 dark:text-blue-400" size={24} />
+            <LayoutGrid
+              className="text-blue-600 dark:text-blue-400"
+              size={24}
+            />
             <h2 className="font-black text-gray-800 dark:text-white text-xl tracking-tighter">
               ምርቶች
             </h2>
@@ -37,7 +69,10 @@ const ProductList = () => {
 
           {/* Search Input */}
           <div className="relative flex-1 w-full">
-            <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
+            <Search
+              className="absolute left-4 top-3.5 text-gray-400"
+              size={20}
+            />
             <input
               type="text"
               placeholder="ምርት ይፈልጉ..."
@@ -47,24 +82,108 @@ const ProductList = () => {
             />
           </div>
 
-          {/* 🔵 Category Select */}
+          {/* Category Select */}
           <div className="relative w-full md:w-72">
-            <Filter className="absolute left-4 top-3.5 text-gray-400" size={18} />
+            <Filter
+              className="absolute left-4 top-3.5 text-gray-400"
+              size={18}
+            />
             <select
               className="w-full pl-12 pr-10 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl outline-none cursor-pointer appearance-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 dark:text-gray-200"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
-              <option value="" className="dark:bg-gray-900">ሁሉም ካቴጎሪዎች</option>
+              <option value="" className="dark:bg-gray-900">
+                ሁሉም ካቴጎሪዎች
+              </option>
               {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat} className="dark:bg-gray-900">{cat}</option>
+                <option key={cat} value={cat} className="dark:bg-gray-900">
+                  {cat}
+                </option>
               ))}
             </select>
             <div className="absolute right-4 top-4 pointer-events-none text-gray-400">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 9l-7 7-7-7"
+                ></path>
               </svg>
             </div>
+          </div>
+
+          {/* Stock Filter */}
+          <div className="relative w-full md:w-56">
+            <Package
+              className="absolute left-4 top-3.5 text-gray-400"
+              size={18}
+            />
+            <select
+              className="w-full pl-12 pr-10 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl outline-none cursor-pointer appearance-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 dark:text-gray-200"
+              value={stockFilter}
+              onChange={(e) => setStockFilter(e.target.value)}
+            >
+              <option value="all" className="dark:bg-gray-900">
+                ሁሉም ክምችት
+              </option>
+              <option value="inStock" className="dark:bg-gray-900">
+                በክምችት ያሉ (In Stock)
+              </option>
+              <option value="lowStock" className="dark:bg-gray-900">
+                አነስተኛ ክምችት (Low Stock)
+              </option>
+            </select>
+            <div className="absolute right-4 top-4 pointer-events-none text-gray-400">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 9l-7 7-7-7"
+                ></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Stock Statistics Bar */}
+        <div className="max-w-[1800px] mx-auto mt-4 flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 dark:text-gray-400">ሁሉም ምርቶች:</span>
+            <span className="font-bold text-gray-900 dark:text-white">
+              {totalProducts}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+            <span className="text-gray-500 dark:text-gray-400">በክምችት ያሉ:</span>
+            <span className="font-bold text-green-600">{inStockProducts}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
+            <span className="text-gray-500 dark:text-gray-400">
+              አነስተኛ ክምችት:
+            </span>
+            <span className="font-bold text-orange-600">
+              {lowStockProducts}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+            <span className="text-gray-500 dark:text-gray-400">የተጠናቀቀ:</span>
+            <span className="font-bold text-red-600">{outOfStockProducts}</span>
           </div>
         </div>
       </div>
@@ -83,6 +202,7 @@ const ProductList = () => {
           </div>
         ) : (
           <div className="text-center py-32 bg-white dark:bg-gray-900 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800">
+            <Package className="mx-auto h-16 w-16 text-gray-400 mb-4" />
             <p className="text-xl text-gray-400 dark:text-gray-500 font-bold italic">
               በዚህ ካቴጎሪ ምንም ምርት አልተገኘም!
             </p>
