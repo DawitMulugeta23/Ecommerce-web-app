@@ -4,7 +4,6 @@ import {
   Edit2,
   Eye,
   Heart,
-  Package,
   ShoppingCart,
   Trash2,
   User,
@@ -21,6 +20,7 @@ const ProductCard = ({ product }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const isAdmin = user?.role === "admin";
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(
@@ -206,24 +206,16 @@ const ProductCard = ({ product }) => {
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
 
-          {/* Stock Badge - Visible to all users */}
-          <div className="absolute top-4 left-4 z-10">
-            <div
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg ${
-                product.countInStock > 10
-                  ? "bg-green-500 text-white"
-                  : product.countInStock > 0
-                    ? "bg-orange-500 text-white"
-                    : "bg-red-500 text-white"
-              }`}
-            >
-              <Package size={14} />
-              <span>Available: {product.countInStock}</span>
+          {/* Stock Badge - For customers only */}
+          {!isAdmin && product.countInStock > 0 && (
+            <div className="absolute top-4 left-4 z-10 bg-green-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg">
+              Available: {product.countInStock}
             </div>
-          </div>
+          )}
 
-          {user && user.role === "admin" && (
-            <div className="absolute top-4 right-20 flex gap-2 z-20">
+          {/* Admin Edit/Delete Buttons */}
+          {isAdmin && (
+            <div className="absolute top-4 left-4 flex gap-2 z-20">
               <Link
                 to={`/admin/edit-product/${product._id}`}
                 onClick={(e) => e.stopPropagation()}
@@ -262,10 +254,11 @@ const ProductCard = ({ product }) => {
         </div>
 
         <div className="p-6 flex flex-col flex-grow">
-          {product.user && (
+          {/* Creator info - shows for admin only */}
+          {product.user && isAdmin && (
             <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
               <User size={14} />
-              <span>Added by: {product.user.name}</span>
+              <span className="truncate">Added by: {product.user.name}</span>
               {product.user.profilePicture && (
                 <img
                   src={product.user.profilePicture}
@@ -276,10 +269,12 @@ const ProductCard = ({ product }) => {
             </div>
           )}
 
+          {/* Product Name */}
           <h3 className="text-xl font-black text-gray-800 dark:text-white mb-2 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
             {product.name}
           </h3>
 
+          {/* Price - ONLY ONCE! */}
           <div className="flex items-center gap-3 mb-4">
             <span className="text-3xl font-black text-gray-900 dark:text-white">
               {product.price}{" "}
@@ -294,40 +289,56 @@ const ProductCard = ({ product }) => {
             )}
           </div>
 
-          {/* Stock Status Bar - Visual indicator for all users */}
-          <div className="mb-4">
-            <div className="flex justify-between items-center text-xs mb-1">
-              <span className="text-gray-500 dark:text-gray-400">
-                Availability
-              </span>
-              <span
-                className={`font-bold ${
-                  product.countInStock > 10
-                    ? "text-green-600 dark:text-green-400"
-                    : product.countInStock > 0
-                      ? "text-orange-600 dark:text-orange-400"
-                      : "text-red-600 dark:text-red-400"
-                }`}
-              >
-                {product.countInStock} units
-              </span>
-            </div>
-            <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  product.countInStock > 10
-                    ? "bg-green-500"
-                    : product.countInStock > 0
-                      ? "bg-orange-500"
-                      : "bg-red-500"
-                }`}
-                style={{
-                  width: `${Math.min((product.countInStock / 50) * 100, 100)}%`,
-                }}
-              ></div>
-            </div>
-          </div>
+          {/* Admin Inventory Section - Detailed stock info */}
+          {isAdmin && (
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <div className="flex justify-between items-center text-xs mb-1">
+                <span className="text-gray-500 dark:text-gray-400 font-bold">
+                  Inventory Status
+                </span>
+                <span
+                  className={`font-bold ${
+                    product.countInStock > 10
+                      ? "text-green-600 dark:text-green-400"
+                      : product.countInStock > 0
+                        ? "text-orange-600 dark:text-orange-400"
+                        : "text-red-600 dark:text-red-400"
+                  }`}
+                >
+                  {product.countInStock} units
+                </span>
+              </div>
 
+              {/* Progress Bar */}
+              <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-1">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    product.countInStock > 10
+                      ? "bg-green-500"
+                      : product.countInStock > 0
+                        ? "bg-orange-500"
+                        : "bg-red-500"
+                  }`}
+                  style={{
+                    width: `${Math.min((product.countInStock / 50) * 100, 100)}%`,
+                  }}
+                ></div>
+              </div>
+
+              {/* Stock Status Text */}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {product.countInStock === 0
+                  ? "⚠️ Out of stock - hidden from customers"
+                  : product.countInStock < 10
+                    ? `⚠️ Low stock - only ${product.countInStock} left`
+                    : "✅ In stock"}
+              </p>
+            </div>
+          )}
+
+          {/* NO LOW STOCK WARNING FOR CUSTOMERS - REMOVED */}
+
+          {/* Action Buttons */}
           <div className="flex gap-2 mt-auto">
             <button
               onClick={handleBuyNow}
@@ -354,6 +365,7 @@ const ProductCard = ({ product }) => {
         </div>
       </div>
 
+      {/* Image Modal */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4"

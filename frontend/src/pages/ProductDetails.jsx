@@ -1,9 +1,9 @@
 // client/src/pages/ProductDetails.jsx
-import { Heart, Package, ShoppingCart, Trash2 } from "lucide-react";
+import { Heart, ShoppingCart, Trash2, Package, Edit } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import CommentSection from "../components/CommentSection";
 import RelatedProducts from "../components/RelatedProducts";
 import { addToCartBackend, addToCartLocal } from "../features/cart/cartSlice";
@@ -15,6 +15,8 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const isAdmin = user?.role === "admin";
+  
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
@@ -230,14 +232,23 @@ const ProductDetail = () => {
                   <span className="font-bold">{likeCount}</span>
                 </button>
 
-                {user && user.role === "admin" && (
-                  <button
-                    onClick={handleDelete}
-                    className="flex items-center gap-2 bg-red-50 text-red-600 px-6 py-3 rounded-2xl font-bold hover:bg-red-600 hover:text-white transition-all"
-                  >
-                    <Trash2 size={20} />
-                    Delete
-                  </button>
+                {isAdmin && (
+                  <>
+                    <Link
+                      to={`/admin/edit-product/${product._id}`}
+                      className="flex items-center gap-2 bg-blue-50 text-blue-600 px-6 py-3 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-all"
+                    >
+                      <Edit size={20} />
+                      Edit
+                    </Link>
+                    <button
+                      onClick={handleDelete}
+                      className="flex items-center gap-2 bg-red-50 text-red-600 px-6 py-3 rounded-2xl font-bold hover:bg-red-600 hover:text-white transition-all"
+                    >
+                      <Trash2 size={20} />
+                      Delete
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -261,63 +272,84 @@ const ProductDetail = () => {
             </p>
 
             <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
-              {/* Stock Information - Detailed for all users */}
-              <div className="mb-6 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Package size={20} className="text-blue-600" />
-                    <span className="font-bold text-gray-700 dark:text-gray-300">
-                      Available Stock
-                    </span>
-                  </div>
-                  <span
-                    className={`text-2xl font-black ${
-                      product.countInStock > 10
-                        ? "text-green-600"
-                        : product.countInStock > 0
+              {/* Stock Information - Different for Admin vs Customer */}
+              {isAdmin ? (
+                // ADMIN VIEW: Detailed stock info with progress bar (for inventory management)
+                <div className="mb-6 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Package size={20} className="text-blue-600" />
+                      <span className="font-bold text-gray-700 dark:text-gray-300">
+                        Inventory Management
+                      </span>
+                    </div>
+                    <span className={`text-2xl font-black ${
+                      product.countInStock > 10 
+                        ? "text-green-600" 
+                        : product.countInStock > 0 
                           ? "text-orange-600"
                           : "text-red-600"
-                    }`}
-                  >
-                    {product.countInStock}
-                  </span>
-                </div>
-
-                {/* Stock Progress Bar */}
-                <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
-                  <div
-                    className={`h-full rounded-full ${
-                      product.countInStock > 10
-                        ? "bg-green-500"
-                        : product.countInStock > 0
-                          ? "bg-orange-500"
-                          : "bg-red-500"
-                    }`}
-                    style={{
-                      width: `${Math.min((product.countInStock / 100) * 100, 100)}%`,
-                    }}
-                  ></div>
-                </div>
-
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500 dark:text-gray-400">
-                    {product.countInStock > 50
-                      ? "High stock"
-                      : product.countInStock > 20
-                        ? "Medium stock"
-                        : product.countInStock > 0
-                          ? "Low stock - Order soon!"
-                          : "Out of stock"}
-                  </span>
-                  {product.countInStock < 10 && product.countInStock > 0 && (
-                    <span className="text-orange-600 font-bold animate-pulse">
-                      Only {product.countInStock} left!
+                    }`}>
+                      {product.countInStock}
                     </span>
+                  </div>
+
+                  {/* Stock Progress Bar (Admin Only) */}
+                  <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+                    <div 
+                      className={`h-full rounded-full ${
+                        product.countInStock > 10 
+                          ? "bg-green-500" 
+                          : product.countInStock > 0 
+                            ? "bg-orange-500"
+                            : "bg-red-500"
+                      }`}
+                      style={{ 
+                        width: `${Math.min((product.countInStock / 100) * 100, 100)}%` 
+                      }}
+                    ></div>
+                  </div>
+
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {product.countInStock > 50 
+                        ? "High stock" 
+                        : product.countInStock > 20 
+                          ? "Medium stock"
+                          : product.countInStock > 0 
+                            ? "Low stock - Reorder soon!"
+                            : "Out of stock - Hidden from customers"}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                // CUSTOMER VIEW: Simple stock indicator (no progress bar, no duplicate number)
+                <div className="mb-6">
+                  {product.countInStock > 0 ? (
+                    <div className="flex items-center gap-3">
+                      <div className={`h-3 w-3 rounded-full ${
+                        product.countInStock > 10 ? "bg-green-500" : "bg-orange-500 animate-pulse"
+                      }`}></div>
+                      <p className={`font-bold text-lg ${
+                        product.countInStock > 10 ? "text-green-600" : "text-orange-600"
+                      }`}>
+                        {product.countInStock > 10 
+                          ? "In Stock" 
+                          : `Only ${product.countInStock} left in stock!`}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="h-3 w-3 rounded-full bg-red-500"></div>
+                      <p className="font-bold text-lg text-red-500">
+                        Out of Stock
+                      </p>
+                    </div>
                   )}
                 </div>
-              </div>
+              )}
 
-              {/* Quantity Selector */}
+              {/* Quantity Selector - Only show if in stock */}
               {product.countInStock > 0 && (
                 <div className="flex items-center gap-4 mb-6">
                   <span className="font-bold text-gray-700 dark:text-gray-300">
@@ -367,11 +399,11 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            {/* Creator Info */}
+            {/* Creator Info - Show to everyone but with different labels */}
             {product.user && (
               <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Added by:{" "}
+                  {isAdmin ? "Added by:" : "Seller:"}{" "}
                   <span className="font-bold text-gray-700 dark:text-gray-300">
                     {product.user.name}
                   </span>
@@ -401,7 +433,7 @@ const ProductDetail = () => {
                   setProduct(data);
                   setLikeCount(data.likeCount || 0);
                 } catch (err) {
-                  toast.error("Failed to refresh product");
+                  toast.error("Failed to refresh product")
                   console.error(err.message);
                 }
               };
