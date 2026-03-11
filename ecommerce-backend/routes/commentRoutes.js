@@ -6,20 +6,34 @@ import {
   getProductComments,
   replyToComment,
   toggleCommentLike,
-  updateComment,
 } from "../controllers/commentController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { validate } from "../middleware/validate.js";
+import {
+  addCommentSchema,
+  commentIdSchema,
+  getProductCommentsSchema,
+  replyToCommentSchema,
+} from "../validations/commentValidation.js";
 
 const router = express.Router();
 
 // Public routes
-router.get("/product/:productId", getProductComments);
+router.get(
+  "/product/:productId",
+  validate(getProductCommentsSchema),
+  getProductComments,
+);
 
 // Protected routes
-router.post("/", protect, addComment);
-router.put("/:id", protect, updateComment); // This will now return 403 - editing disabled
-router.delete("/:id", protect, deleteComment);
-router.post("/:id/like", protect, toggleCommentLike);
-router.post("/:id/reply", protect, replyToComment);
+router.post("/", protect, validate(addCommentSchema), addComment);
+router.delete("/:id", protect, validate(commentIdSchema), deleteComment);
+router.post("/:id/like", protect, validate(commentIdSchema), toggleCommentLike);
+router.post(
+  "/:id/reply",
+  protect,
+  validate(replyToCommentSchema),
+  replyToComment,
+);
 
 export default router;
