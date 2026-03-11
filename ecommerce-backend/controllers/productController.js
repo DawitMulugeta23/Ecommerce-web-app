@@ -173,7 +173,7 @@ export const deleteProduct = async (req, res) => {
       `🗑️ Attempting to soft delete product: ${productId} by admin: ${req.user._id}`,
     );
 
-    // Check if product exists - WITHOUT using session first
+    // Check if product exists
     const product = await Product.findById(productId);
 
     if (!product) {
@@ -184,46 +184,39 @@ export const deleteProduct = async (req, res) => {
       });
     }
 
-    console.log(`✅ Found product: ${product.name}, setting stock to 0...`);
+    console.log(`✅ Found product: ${product.name}, deleting...`);
 
-    // Simple update without session first (to test if it works)
-    product.countInStock = 0;
-    await product.save();
+    // Instead of soft delete, let's actually delete the product
+    // This ensures it's removed from the database
+    await Product.findByIdAndDelete(productId);
 
-    // Also remove from all users' carts (without session)
+    // Also remove from all users' carts
     try {
-      const cartUpdateResult = await Cart.updateMany(
+      await Cart.updateMany(
         { "cartItems.product": productId },
         { $pull: { cartItems: { product: productId } } },
       );
-      console.log(
-        `✅ Removed product from ${cartUpdateResult.modifiedCount} carts`,
-      );
+      console.log(`✅ Removed product from carts`);
     } catch (cartError) {
       console.error("Error removing from carts:", cartError);
-      // Continue even if cart update fails
     }
 
     console.log(
-      `✅ Product ${productId} (${product.name}) soft deleted successfully (stock set to 0)`,
+      `✅ Product ${productId} (${product.name}) deleted successfully`,
     );
 
     res.json({
       success: true,
-      message: "Product has been removed from store (stock set to 0)",
+      message: "Product has been deleted successfully",
       deletedProductId: productId,
       deletedProductName: product.name,
     });
   } catch (error) {
-    console.error("❌ Soft delete product error details:", {
-      error: error.message,
-      stack: error.stack,
-      productId: req.params.id,
-    });
+    console.error("❌ Delete product error:", error);
 
     res.status(500).json({
       success: false,
-      message: "Failed to remove product: " + error.message,
+      message: "Failed to delete product: " + error.message,
     });
   }
 };
@@ -265,21 +258,19 @@ export const permanentDeleteProduct = async (req, res) => {
 
     // 1. Delete all comments related to this product
     try {
-      const commentDeleteResult = await Comment.deleteMany({
-        product: productId,
-      });
-      console.log(`✅ Deleted ${commentDeleteResult.deletedCount} comments`);
+      await Comment.deleteMany({ product: productId });
+      console.log(`✅ Deleted comments`);
     } catch (commentError) {
       console.error("Error deleting comments:", commentError);
     }
 
     // 2. Remove product from all users' carts
     try {
-      const cartUpdateResult = await Cart.updateMany(
+      await Cart.updateMany(
         { "cartItems.product": productId },
         { $pull: { cartItems: { product: productId } } },
       );
-      console.log(`✅ Removed from ${cartUpdateResult.modifiedCount} carts`);
+      console.log(`✅ Removed from carts`);
     } catch (cartError) {
       console.error("Error removing from carts:", cartError);
     }

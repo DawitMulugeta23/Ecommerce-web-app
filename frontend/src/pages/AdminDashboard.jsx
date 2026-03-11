@@ -63,13 +63,12 @@ const AdminDashboard = () => {
       setOrdersLoading(false);
     }
   };
-
-  const handleDeleteProduct = async (id, name) => {
+ const handleDeleteProduct = async (id, name) => {
     toast(
       (t) => (
         <div className="flex flex-col gap-3">
-          <p className="font-bold text-red-600">⚠️ Permanent Delete</p>
-          <p>Are you sure you want to permanently delete "{name}"?</p>
+          <p className="font-bold text-red-600">⚠️ Delete Product</p>
+          <p>Are you sure you want to delete "{name}"?</p>
           <p className="text-sm text-gray-500">This action cannot be undone.</p>
           <div className="flex gap-2 justify-end">
             <button
@@ -89,13 +88,26 @@ const AdminDashboard = () => {
                   console.log("Delete result:", result);
                   
                   if (result.success) {
-                    toast.success(`✅ "${name}" deleted successfully!`, { id: deletingToast });
+                    toast.success(`✅ "${name}" deleted successfully!`, { 
+                      id: deletingToast,
+                      duration: 3000 
+                    });
                   } else {
-                    toast.error("Failed to delete product", { id: deletingToast });
+                    toast.error(result.message || "Failed to delete product", { 
+                      id: deletingToast 
+                    });
                   }
                 } catch (err) {
                   console.error("Delete error:", err);
-                  toast.error(err?.message || "Failed to delete product!", { id: deletingToast });
+                  
+                  let errorMessage = "Failed to delete product!";
+                  if (err?.message) {
+                    errorMessage = err.message;
+                  } else if (err?.response?.data?.message) {
+                    errorMessage = err.response.data.message;
+                  }
+                  
+                  toast.error(errorMessage, { id: deletingToast });
                 }
               }}
             >

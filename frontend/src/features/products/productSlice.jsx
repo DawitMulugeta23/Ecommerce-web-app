@@ -9,7 +9,9 @@ export const fetchProducts = createAsyncThunk(
       const response = await API.get("/products");
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || { message: "Failed to fetch products" });
+      return rejectWithValue(
+        err.response?.data || { message: "Failed to fetch products" },
+      );
     }
   },
 );
@@ -60,36 +62,49 @@ export const deleteProduct = createAsyncThunk(
   async (id, { getState, rejectWithValue }) => {
     try {
       const { auth } = getState();
+
+      if (!auth.token) {
+        return rejectWithValue({ message: "No authentication token found" });
+      }
+
       const config = {
         headers: {
           Authorization: `Bearer ${auth.token}`,
         },
       };
-      
+
       console.log(`🗑️ Attempting to delete product ${id}`);
-      console.log("Token:", auth.token); // Check if token exists
-      
+
       const response = await API.delete(`/products/${id}`, config);
       console.log("✅ Delete response:", response.data);
-      
+
       // Return both the id and the response data
-      return { 
-        id, 
+      return {
+        id,
         ...response.data,
-        success: true 
+        success: true,
       };
     } catch (err) {
-      console.error("❌ Delete product error:", err.response?.data || err.message);
-      console.error("Full error:", err);
-      
+      console.error(
+        "❌ Delete product error:",
+        err.response?.data || err.message,
+      );
+
       // Check for specific error status
       if (err.response?.status === 401) {
-        return rejectWithValue({ message: "Unauthorized - Please login again" });
+        return rejectWithValue({
+          message: "Unauthorized - Please login again",
+        });
       }
       if (err.response?.status === 403) {
-        return rejectWithValue({ message: "Forbidden - Admin access required" });
+        return rejectWithValue({
+          message: "Forbidden - Admin access required",
+        });
       }
-      
+      if (err.response?.status === 404) {
+        return rejectWithValue({ message: "Product not found" });
+      }
+
       return rejectWithValue(
         err.response?.data || { message: "Failed to delete product" },
       );
@@ -194,8 +209,10 @@ const productSlice = createSlice({
         const previousLength = state.items.length;
         state.items = state.items.filter((p) => p._id !== productId);
         const newLength = state.items.length;
-        
-        console.log(`✅ Product ${productId} removed from Redux state. Items: ${previousLength} -> ${newLength}`);
+
+        console.log(
+          `✅ Product ${productId} removed from Redux state. Items: ${previousLength} -> ${newLength}`,
+        );
         state.error = null;
       })
       .addCase(deleteProduct.rejected, (state, action) => {

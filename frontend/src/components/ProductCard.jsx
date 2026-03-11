@@ -104,85 +104,86 @@ const ProductCard = ({ product }) => {
     }
   };
 
-const handleDelete = async (e) => {
-  e.stopPropagation();
-
-  if (isDeleting) return;
-
-  // Show confirmation toast
-  toast((t) => (
-    <div className="flex flex-col gap-3 p-2">
-      <p className="font-bold text-red-600 text-lg">⚠️ Permanent Delete</p>
-      <p className="text-gray-800 dark:text-gray-200">
-        Are you sure you want to permanently delete "{product.name}"?
-      </p>
-      <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-sm">
-        <p className="font-bold mb-1">This will:</p>
-        <ul className="list-disc pl-4 space-y-1 text-gray-600 dark:text-gray-400">
-          <li>Remove product from database</li>
-          <li>Delete all comments</li>
-          <li>Remove from all users' carts</li>
-          <li>Mark as deleted in orders</li>
-        </ul>
-      </div>
-      <div className="flex gap-2 justify-end mt-2">
-        <button
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 font-bold transition"
-          onClick={() => toast.dismiss(t.id)}
-        >
-          Cancel
-        </button>
-        <button
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold flex items-center gap-2 transition"
-          onClick={async () => {
-            toast.dismiss(t.id);
-            setIsDeleting(true);
-
-            const deletingToast = toast.loading("Deleting product...");
-
-            try {
-              console.log("Attempting to delete product:", product._id);
-              
-              const result = await dispatch(
-                deleteProduct(product._id)
-              ).unwrap();
-              
-              console.log("Delete result:", result);
-
-              if (result.success) {
-                toast.success(
-                  `✅ "${product.name}" deleted successfully!`,
-                  {
+  const handleDelete = async (e) => {
+    e.stopPropagation();
+  
+    if (isDeleting) return;
+  
+    // Show confirmation toast
+    toast((t) => (
+      <div className="flex flex-col gap-3 p-2">
+        <p className="font-bold text-red-600 text-lg">⚠️ Delete Product</p>
+        <p className="text-gray-800 dark:text-gray-200">
+          Are you sure you want to delete "{product.name}"?
+        </p>
+        <p className="text-sm text-gray-500">This action cannot be undone.</p>
+        <div className="flex gap-2 justify-end mt-2">
+          <button
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 font-bold transition"
+            onClick={() => toast.dismiss(t.id)}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold flex items-center gap-2 transition"
+            onClick={async () => {
+              toast.dismiss(t.id);
+              setIsDeleting(true);
+  
+              const deletingToast = toast.loading("Deleting product...");
+  
+              try {
+                console.log("Attempting to delete product:", product._id);
+                
+                const result = await dispatch(
+                  deleteProduct(product._id)
+                ).unwrap();
+                
+                console.log("Delete result:", result);
+  
+                if (result.success) {
+                  toast.success(
+                    `✅ "${product.name}" deleted successfully!`,
+                    {
+                      id: deletingToast,
+                      duration: 3000,
+                    }
+                  );
+                } else {
+                  toast.error(result.message || "Failed to delete product", {
                     id: deletingToast,
-                    duration: 3000,
-                  }
-                );
-              } else {
-                toast.error(result.message || "Failed to delete product", {
+                  });
+                }
+              } catch (err) {
+                console.error("Delete error:", err);
+                
+                // Get the error message
+                let errorMessage = "Failed to delete product";
+                if (err?.message) {
+                  errorMessage = err.message;
+                } else if (err?.response?.data?.message) {
+                  errorMessage = err.response.data.message;
+                }
+                
+                toast.error(errorMessage, {
                   id: deletingToast,
                 });
+              } finally {
+                setIsDeleting(false);
               }
-            } catch (err) {
-              console.error("Delete error:", err);
-              toast.error(err?.message || "Failed to delete product", {
-                id: deletingToast,
-              });
-            } finally {
-              setIsDeleting(false);
-            }
-          }}
-        >
-          <Trash2 size={16} />
-          Yes, Delete Permanently
-        </button>
+            }}
+          >
+            <Trash2 size={16} />
+            Yes, Delete
+          </button>
+        </div>
       </div>
-    </div>
-  ),
-  {
-    duration: Infinity,
-    position: "top-center",
-  });
-};
+    ),
+    {
+      duration: Infinity,
+      position: "top-center",
+    });
+  };
 
   const handleImageClick = (e) => {
     e.stopPropagation();
