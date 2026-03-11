@@ -58,4 +58,12 @@ router.delete(
   permanentDeleteProduct,
 );
 
+router.get("/test-admin", protect, admin, (req, res) => {
+  res.json({ 
+    success: true, 
+    message: "Admin access verified!", 
+    user: req.user 
+  });
+});
+
 export default router;
