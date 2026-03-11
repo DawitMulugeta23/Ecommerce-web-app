@@ -16,6 +16,7 @@ import Contact from "./pages/Contact";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import MyOrders from "./pages/MyOrders";
+import OrderDetails from "./pages/OrderDetails"; // Import the new component
 import ProductDetails from "./pages/ProductDetails";
 import Register from "./pages/Register";
 import Success from "./pages/Success";
@@ -46,6 +47,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <MyOrders />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/order/:id" // ADD THIS NEW ROUTE
+                element={
+                  <ProtectedRoute>
+                    <OrderDetails />
                   </ProtectedRoute>
                 }
               />
