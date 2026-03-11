@@ -1,5 +1,4 @@
 // backend/controllers/productController.js
-import mongoose from "mongoose";
 import Cart from "../models/Cart.js";
 import Comment from "../models/Comment.js";
 import Order from "../models/Order.js";
@@ -13,17 +12,18 @@ export const getProducts = async (req, res) => {
     let products = await Product.find({})
       .populate("user", "name email profilePicture")
       .sort({ createdAt: -1 });
-    
+
     // Check if user is admin (from auth middleware)
-    const isAdmin = req.user && req.user.role === 'admin';
-    
+    const isAdmin = req.user && req.user.role === "admin";
+
     // If not admin, filter out products with zero stock
     if (!isAdmin) {
-      products = products.filter(product => product.countInStock > 0);
+      products = products.filter((product) => product.countInStock > 0);
     }
-    
+
     res.json(products);
   } catch (error) {
+    console.error("Error in getProducts:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -43,8 +43,8 @@ export const getProductById = async (req, res) => {
     }
 
     // Check if user is admin
-    const isAdmin = req.user && req.user.role === 'admin';
-    
+    const isAdmin = req.user && req.user.role === "admin";
+
     // If product has zero stock and user is not admin, hide it
     if (product.countInStock === 0 && !isAdmin) {
       return res.status(404).json({ message: "Product not available!" });
@@ -52,6 +52,7 @@ export const getProductById = async (req, res) => {
 
     res.json(product);
   } catch (error) {
+    console.error("Error in getProductById:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -64,9 +65,10 @@ export const getAllProductsAdmin = async (req, res) => {
     const products = await Product.find({})
       .populate("user", "name email profilePicture")
       .sort({ createdAt: -1 });
-    
+
     res.json(products);
   } catch (error) {
+    console.error("Error in getAllProductsAdmin:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -79,9 +81,10 @@ export const getZeroStockProducts = async (req, res) => {
     const products = await Product.find({ countInStock: 0 })
       .populate("user", "name email profilePicture")
       .sort({ createdAt: -1 });
-    
+
     res.json(products);
   } catch (error) {
+    console.error("Error in getZeroStockProducts:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -110,6 +113,7 @@ export const createProduct = async (req, res) => {
 
     res.status(201).json(populatedProduct);
   } catch (error) {
+    console.error("Error in createProduct:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -144,6 +148,7 @@ export const updateProduct = async (req, res) => {
 
     res.json(populatedProduct);
   } catch (error) {
+    console.error("Error in updateProduct:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -152,63 +157,73 @@ export const updateProduct = async (req, res) => {
 // @route   DELETE /api/products/:id
 // @access  Private/Admin
 export const deleteProduct = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const productId = req.params.id;
-    console.log(`🗑️ Attempting to soft delete product: ${productId} by admin: ${req.user._id}`);
 
-    // Check if product exists
-    const product = await Product.findById(productId).session(session);
-    if (!product) {
-      await session.abortTransaction();
-      session.endSession();
-      console.log(`❌ Product ${productId} not found`);
-      return res.status(404).json({ 
+    // Check if user exists in request
+    if (!req.user) {
+      console.log("❌ No user found in request");
+      return res.status(401).json({
         success: false,
-        message: "Product not found" 
+        message: "Unauthorized - Please login again",
+      });
+    }
+
+    console.log(
+      `🗑️ Attempting to soft delete product: ${productId} by admin: ${req.user._id}`,
+    );
+
+    // Check if product exists - WITHOUT using session first
+    const product = await Product.findById(productId);
+
+    if (!product) {
+      console.log(`❌ Product ${productId} not found`);
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
       });
     }
 
     console.log(`✅ Found product: ${product.name}, setting stock to 0...`);
 
-    // Instead of deleting, just set stock to 0
+    // Simple update without session first (to test if it works)
     product.countInStock = 0;
-    await product.save({ session });
-    
-    // Also remove from all users' carts
-    const cartUpdateResult = await Cart.updateMany(
-      { "cartItems.product": productId },
-      { $pull: { cartItems: { product: productId } } }
-    ).session(session);
-    console.log(`✅ Removed product from ${cartUpdateResult.modifiedCount} carts`);
+    await product.save();
 
-    await session.commitTransaction();
-    session.endSession();
-    
-    console.log(`✅ Product ${productId} (${product.name}) soft deleted successfully (stock set to 0)`);
+    // Also remove from all users' carts (without session)
+    try {
+      const cartUpdateResult = await Cart.updateMany(
+        { "cartItems.product": productId },
+        { $pull: { cartItems: { product: productId } } },
+      );
+      console.log(
+        `✅ Removed product from ${cartUpdateResult.modifiedCount} carts`,
+      );
+    } catch (cartError) {
+      console.error("Error removing from carts:", cartError);
+      // Continue even if cart update fails
+    }
 
-    res.json({ 
+    console.log(
+      `✅ Product ${productId} (${product.name}) soft deleted successfully (stock set to 0)`,
+    );
+
+    res.json({
       success: true,
       message: "Product has been removed from store (stock set to 0)",
       deletedProductId: productId,
-      deletedProductName: product.name
+      deletedProductName: product.name,
     });
-
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    
     console.error("❌ Soft delete product error details:", {
       error: error.message,
       stack: error.stack,
-      productId: req.params.id
+      productId: req.params.id,
     });
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       success: false,
-      message: "Failed to remove product: " + error.message 
+      message: "Failed to remove product: " + error.message,
     });
   }
 };
@@ -217,79 +232,96 @@ export const deleteProduct = async (req, res) => {
 // @route   DELETE /api/products/:id/permanent
 // @access  Private/Admin
 export const permanentDeleteProduct = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const productId = req.params.id;
-    console.log(`🗑️ Attempting to permanently delete product: ${productId} by admin: ${req.user._id}`);
 
-    // Check if product exists
-    const product = await Product.findById(productId).session(session);
-    if (!product) {
-      await session.abortTransaction();
-      session.endSession();
-      console.log(`❌ Product ${productId} not found`);
-      return res.status(404).json({ 
+    // Check if user exists in request
+    if (!req.user) {
+      console.log("❌ No user found in request");
+      return res.status(401).json({
         success: false,
-        message: "Product not found" 
+        message: "Unauthorized - Please login again",
       });
     }
 
-    console.log(`✅ Found product: ${product.name}, proceeding with permanent deletion...`);
+    console.log(
+      `🗑️ Attempting to permanently delete product: ${productId} by admin: ${req.user._id}`,
+    );
+
+    // Check if product exists
+    const product = await Product.findById(productId);
+
+    if (!product) {
+      console.log(`❌ Product ${productId} not found`);
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    console.log(
+      `✅ Found product: ${product.name}, proceeding with permanent deletion...`,
+    );
 
     // 1. Delete all comments related to this product
-    const commentDeleteResult = await Comment.deleteMany({ product: productId }).session(session);
-    console.log(`✅ Deleted ${commentDeleteResult.deletedCount} comments`);
+    try {
+      const commentDeleteResult = await Comment.deleteMany({
+        product: productId,
+      });
+      console.log(`✅ Deleted ${commentDeleteResult.deletedCount} comments`);
+    } catch (commentError) {
+      console.error("Error deleting comments:", commentError);
+    }
 
     // 2. Remove product from all users' carts
-    const cartUpdateResult = await Cart.updateMany(
-      { "cartItems.product": productId },
-      { $pull: { cartItems: { product: productId } } }
-    ).session(session);
-    console.log(`✅ Removed from ${cartUpdateResult.modifiedCount} carts`);
+    try {
+      const cartUpdateResult = await Cart.updateMany(
+        { "cartItems.product": productId },
+        { $pull: { cartItems: { product: productId } } },
+      );
+      console.log(`✅ Removed from ${cartUpdateResult.modifiedCount} carts`);
+    } catch (cartError) {
+      console.error("Error removing from carts:", cartError);
+    }
 
     // 3. Handle orders - mark product as deleted
-    const ordersWithProduct = await Order.find({
-      "orderItems.product": productId
-    }).session(session);
+    try {
+      const ordersWithProduct = await Order.find({
+        "orderItems.product": productId,
+      });
 
-    for (const order of ordersWithProduct) {
-      let orderModified = false;
-      for (const item of order.orderItems) {
-        if (item.product && item.product.toString() === productId) {
-          item.name = `${item.name} (Product Deleted)`;
-          item.product = null;
-          orderModified = true;
+      for (const order of ordersWithProduct) {
+        let orderModified = false;
+        for (const item of order.orderItems) {
+          if (item.product && item.product.toString() === productId) {
+            item.name = `${item.name} (Product Deleted)`;
+            item.product = null;
+            orderModified = true;
+          }
+        }
+        if (orderModified) {
+          await order.save();
         }
       }
-      if (orderModified) {
-        await order.save({ session });
-      }
+    } catch (orderError) {
+      console.error("Error updating orders:", orderError);
     }
 
     // 4. Finally delete the product
-    await Product.findByIdAndDelete(productId).session(session);
-    
-    await session.commitTransaction();
-    session.endSession();
-    
+    await Product.findByIdAndDelete(productId);
+
     console.log(`✅ Product ${productId} permanently deleted from database`);
 
-    res.json({ 
+    res.json({
       success: true,
       message: "Product permanently deleted from database",
-      deletedProductId: productId
+      deletedProductId: productId,
     });
-
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    
     console.error("❌ Permanent delete error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to permanently delete product: " + error.message 
+      message: "Failed to permanently delete product: " + error.message,
     });
   }
 };
@@ -328,6 +360,7 @@ export const toggleLike = async (req, res) => {
       productId: product._id,
     });
   } catch (error) {
+    console.error("Error in toggleLike:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -343,6 +376,7 @@ export const getProductsByUser = async (req, res) => {
 
     res.json(products);
   } catch (error) {
+    console.error("Error in getProductsByUser:", error);
     res.status(500).json({ message: error.message });
   }
 };

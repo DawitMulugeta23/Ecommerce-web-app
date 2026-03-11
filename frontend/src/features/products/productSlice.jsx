@@ -55,7 +55,6 @@ export const updateProduct = createAsyncThunk(
   },
 );
 
-// FIXED: Removed unused 'dispatch' parameter
 export const deleteProduct = createAsyncThunk(
   "products/deleteProduct",
   async (id, { getState, rejectWithValue }) => {
@@ -68,6 +67,8 @@ export const deleteProduct = createAsyncThunk(
       };
       
       console.log(`🗑️ Attempting to delete product ${id}`);
+      console.log("Token:", auth.token); // Check if token exists
+      
       const response = await API.delete(`/products/${id}`, config);
       console.log("✅ Delete response:", response.data);
       
@@ -79,6 +80,16 @@ export const deleteProduct = createAsyncThunk(
       };
     } catch (err) {
       console.error("❌ Delete product error:", err.response?.data || err.message);
+      console.error("Full error:", err);
+      
+      // Check for specific error status
+      if (err.response?.status === 401) {
+        return rejectWithValue({ message: "Unauthorized - Please login again" });
+      }
+      if (err.response?.status === 403) {
+        return rejectWithValue({ message: "Forbidden - Admin access required" });
+      }
+      
       return rejectWithValue(
         err.response?.data || { message: "Failed to delete product" },
       );
